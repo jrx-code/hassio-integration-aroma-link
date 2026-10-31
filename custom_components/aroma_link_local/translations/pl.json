@@ -1,0 +1,30 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Aroma-Link Local",
+        "description": "Urządzenia wykrywane są automatycznie z MQTT. Wymaga integracji MQTT w Home Assistant wskazującej na brokera, z którego korzystają urządzenia, oraz przekierowania urządzeń na tego brokera."
+      }
+    },
+    "abort": {
+      "already_configured": "Aroma-Link Local jest już skonfigurowane."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opcje Aroma-Link Local",
+        "data": {
+          "query_interval": "Interwał odpytywania stanu (sekundy, 0 = wyłączone)",
+          "uplink_wildcard": "Temat uplink (urządzenie do HA)",
+          "downlink_pattern": "Wzorzec tematu downlink"
+        },
+        "data_description": {
+          "query_interval": "Jak często pytać urządzenia o stan. 0 wyłącza odpytywanie.",
+          "uplink_wildcard": "Subskrypcja MQTT wiadomości z urządzeń. Obejmuje tematy sterowania i telemetrii.",
+          "downlink_pattern": "Temat komend. '{id}' zostanie zastąpione identyfikatorem tematu urządzenia."
+        }
+      }
+    }
+  }
+}
