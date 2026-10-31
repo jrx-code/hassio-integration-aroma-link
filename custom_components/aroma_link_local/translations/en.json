@@ -1,0 +1,25 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Aroma-Link Local",
+        "description": "Devices are discovered automatically from MQTT. Requires HA's MQTT integration pointed at the broker the devices use (EMQX) and the devices redirected there (see docs/cutover.md). Add this once."
+      }
+    },
+    "abort": {
+      "already_configured": "Aroma-Link Local is already set up."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Aroma-Link Local options",
+        "data": {
+          "query_interval": "State poll interval (seconds, 0 = off)",
+          "uplink_wildcard": "Uplink topic (device to HA)",
+          "downlink_pattern": "Downlink topic pattern ({id} = device topic id)"
+        }
+      }
+    }
+  }
+}
