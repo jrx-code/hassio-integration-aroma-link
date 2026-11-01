@@ -190,10 +190,27 @@ pattern write q/2/d/%c/+
 pattern read  q/1/d/%c/+
 ```
 
-**Port.** The device always connects to **1883**. If your authenticated listener already owns 1883
-on the IP the DNS name will point at, either bind the no-auth listener to 1883 on a dedicated IP
-(for example a broker interface in the IoT VLAN), or keep it on another port and rewrite the port
-on the router (step 3).
+**Port and topology.** The device always connects to **1883**, and your authenticated listener
+usually owns that port already. Two ways to meet the device:
+
+- **A. The router rewrites the port** (what the author runs). The DNS name points at a broker
+  address in another subnet; the router allows the flow, rewrites 1883 to the listener port and
+  masquerades the return path. Everything lives on the router, see step 3.
+- **B. A dedicated broker address inside the device VLAN, no NAT.** Give the broker host a second
+  IP in the diffuser's VLAN (extra interface or address alias), bind the no-auth listener to
+  `<that IP>:1883` and point the DNS name at it. Device and listener share one L2 segment, so the
+  router needs no firewall or NAT rule at all, only the DNS record. The catch: Linux refuses to
+  bind `<ip>:1883` while another socket listens on `0.0.0.0:1883` (verified: `EADDRINUSE`; it only
+  works when both sockets set `SO_REUSEPORT`, which neither EMQX 5.8 nor Mosquitto expose). So the
+  authenticated listener has to be bound to explicit addresses as well, one listener per address it
+  serves (LAN IP, IoT IP, loopback). Rebinding disconnects its plaintext clients once; they
+  reconnect on their own. If your broker runs in Docker **bridge** mode, publishing
+  `<that IP>:1883` to the container's listener port (for example `"10.0.40.29:1883:1893"`) achieves
+  the same without touching listener binds (not tested by the author, whose EMQX uses host
+  networking).
+
+Pick A when you would rather not touch a working broker, B when you want the router out of the
+picture. Step 3 describes A in full; for B only its DNS item applies.
 
 ### 3. DNS override and routing
 
