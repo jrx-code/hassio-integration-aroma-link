@@ -1,9 +1,6 @@
 {
   "domain": "aroma_link_local",
   "name": "Aroma-Link Local",
-  "version": "0.4.0",
-  "documentation": "https://github.com/jrx-code/hassio-integration-aroma-link",
-  "issue_tracker": "https://github.com/jrx-code/hassio-integration-aroma-link/issues",
   "codeowners": [
     "@jrx-code"
   ],
@@ -14,7 +11,10 @@
     "frontend",
     "websocket_api"
   ],
-  "iot_class": "local_push",
+  "documentation": "https://github.com/jrx-code/hassio-integration-aroma-link",
   "integration_type": "device",
-  "requirements": []
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/jrx-code/hassio-integration-aroma-link/issues",
+  "requirements": [],
+  "version": "0.4.1"
 }

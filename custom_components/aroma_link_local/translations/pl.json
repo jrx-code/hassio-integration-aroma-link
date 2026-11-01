@@ -29,7 +29,7 @@
         "data_description": {
           "query_interval": "Jak często pytać urządzenie o status i harmonogram. 0 wyłącza odpytywanie.",
           "uplink_wildcard": "Subskrypcja MQTT wiadomości z urządzeń. Obejmuje tematy sterowania i telemetrii.",
-          "downlink_pattern": "Temat komend. '{id}' jest zastępowane identyfikatorem urządzenia."
+          "downlink_pattern": "Temat komend. Identyfikator urządzenia zastępuje symbol zastępczy id."
         }
       },
       "gates": {

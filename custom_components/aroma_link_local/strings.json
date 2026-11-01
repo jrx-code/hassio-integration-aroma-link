@@ -29,7 +29,7 @@
         "data_description": {
           "query_interval": "How often to ask each device for its status and schedule. 0 disables polling.",
           "uplink_wildcard": "MQTT subscription for device messages. Covers the control and telemetry topics.",
-          "downlink_pattern": "Command topic. '{id}' is replaced with the device topic id."
+          "downlink_pattern": "Command topic. The device topic id is substituted for the id placeholder."
         }
       },
       "gates": {
