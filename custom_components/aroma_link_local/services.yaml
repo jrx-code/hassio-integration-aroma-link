@@ -1,0 +1,134 @@
+sync_schedules:
+  fields:
+    device_id:
+      selector:
+        text:
+set_schedule:
+  fields:
+    device_id:
+      selector:
+        text:
+    schedule:
+      required: true
+      example: '{"days": {"0": {"windows": [{"start": "08:00", "end": "10:00", "work_sec": 10, "pause_sec": 120, "level": 1, "enabled": true}], "night_owl": false}}}'
+      selector:
+        object:
+import_schedule:
+  fields:
+    device_id:
+      selector:
+        text:
+set_night_owl:
+  fields:
+    device_id:
+      selector:
+        text:
+    mode:
+      selector:
+        select:
+          options: [outside_windows, fixed]
+    fixed_start:
+      selector:
+        time:
+    fixed_end:
+      selector:
+        time:
+    work_sec:
+      selector:
+        number: {min: 5, max: 900, unit_of_measurement: s}
+    pause_sec:
+      selector:
+        number: {min: 5, max: 900, unit_of_measurement: s}
+    level:
+      selector:
+        select:
+          options: ["1", "2", "3"]
+    linger_minutes:
+      selector:
+        number: {min: 0, max: 1440, unit_of_measurement: min}
+start_timed_run:
+  fields:
+    device_id:
+      selector:
+        text:
+    duration_minutes:
+      required: true
+      default: 360
+      selector:
+        number: {min: 1, max: 1440, unit_of_measurement: min}
+    work_sec:
+      selector:
+        number: {min: 5, max: 900, unit_of_measurement: s}
+    pause_sec:
+      selector:
+        number: {min: 5, max: 900, unit_of_measurement: s}
+cancel_timed_run:
+  fields:
+    device_id:
+      selector:
+        text:
+oil_refill:
+  fields:
+    device_id:
+      selector:
+        text:
+    fill_volume:
+      selector:
+        number: {min: 1, max: 1000, unit_of_measurement: ml}
+    fill_date:
+      selector:
+        text:
+    keep_calibration:
+      default: true
+      selector:
+        boolean:
+oil_calibrate:
+  fields:
+    device_id:
+      selector:
+        text:
+    action:
+      required: true
+      selector:
+        select:
+          options: [start, end, finalize, manual, set]
+    bottle_capacity:
+      selector:
+        number: {min: 1, max: 1000, unit_of_measurement: ml}
+    fill_volume:
+      selector:
+        number: {min: 1, max: 1000, unit_of_measurement: ml}
+    measured_remaining:
+      selector:
+        number: {min: 0, max: 1000, unit_of_measurement: ml}
+    manual_rate_ml_per_hour:
+      selector:
+        number: {min: 0, max: 100, step: any, unit_of_measurement: ml/h}
+    manual_start_volume:
+      selector:
+        number: {min: 0, max: 1000, unit_of_measurement: ml}
+    manual_end_volume:
+      selector:
+        number: {min: 0, max: 1000, unit_of_measurement: ml}
+    manual_runtime_hours:
+      selector:
+        number: {min: 0, max: 100000, step: any, unit_of_measurement: h}
+send_frame:
+  fields:
+    device_id:
+      selector:
+        text:
+    cmd:
+      required: true
+      example: "52"
+      selector:
+        text:
+    sub:
+      required: true
+      example: "25"
+      selector:
+        text:
+    payload:
+      example: "0200011F"
+      selector:
+        text:

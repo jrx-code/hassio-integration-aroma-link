@@ -54,7 +54,7 @@ AA | dir | flag | MAC(6B) | 00 | cmd | sub | 01 | 00 | payload... | XOR | EE
 | Stan power | up | 53 | 10 | `01 00 val` | `AACA01<MAC>00531001000175EE` | pcap full-control (po power ON/OFF), 2 ramki |
 | Stan fan | up | 53 | 11 | `01 00 val` | `AACA01<MAC>00531101000174EE` | pcap (fan=1), lokalnie ON/OFF |
 | Dump harmonogramu | up | 52/53 | 15/2E | 5×slot | `AACA01<MAC>0052152E...EE` | pcap |
-| Zegar + aktywny program (odpowiedź) | up | 52 | 25 | `17 00 07EA 0A 1F 14 31 1B 06 00 01 01 00 0A 00 78 00 00 17 3B 01 00 00 00` | `AACA01<MAC>00522517...EE` | pcap full-control, 1 ramka; `07EA 0A 1F 14 31 1B` = 2026-10-31 20:49:27, zapytania z serwera w pcap brak |
+| Raport stanu | down/up | 52 | 25 | zapytanie `02 00 01 1F`; odpowiedź patrz niżej | `AACA01<MAC>00522517...EE` | pcap + żywe sondowanie 2026-11-01 |
 
 ### Slot harmonogramu (sub 0x15, dług. 0x2E=46 dla 5 slotów)
 
@@ -99,3 +99,36 @@ użyć **listenera EMQX bez authn** dla tego urządzenia (ACL dalej ogranicza to
 - `53/06`, krótki status po starcie (wartość 00).
 
 Brak NTP (UDP 123) w oknie power-cycle; źródło czasu dla harmonogramu niepotwierdzone.
+
+
+## Raport stanu 52/25 (zweryfikowany na żywo 2026-11-01)
+
+Zapytanie: `AAAC00<MAC>00 52 25 02 00 01 1F <XOR> EE` (te same cztery bajty co `52/15`). Odpowiedź:
+
+```
+17 00 | rok16 mies dzień godz min sek dow | 00 power faza | workRemain16 pauseRemain16 |
+        startH startM endH endM poziom | 00 00 00
+```
+- Zegar to czas **lokalny** urządzenia; `dow` 1=pn … 7=nd (zgodne z sobotą `06` w przechwycie z 31.10).
+- `power` 0/1; `faza` 0 wyłączony / 1 rozpyla / 2 pauza (jak `workStatus` w chmurze). Kolejność potwierdzona próbką w fazie pauzy: `00 01 02`, pauza 107 s.
+- `workRemain` i `pauseRemain` w sekundach, odliczają przy włączonym zasilaniu (10 → 4 s w odstępie 6 s);
+  przy wyłączonym stoją na wartościach slotu (10/120).
+- Wentylator nie jest w tym raporcie; jego stan to `53/11`.
+
+## Slot: jeden zestaw, nie tygodniowy (sondowanie 2026-11-01)
+
+Zapytanie `52/15` ma payload `02 <b1> <b2> 1F`. Odpowiedź echuje `b2` w nagłówku (`2E 00 <b2>`), więc to
+identyfikator zapytania (testowane 01 i 02), a `1F` nie ma wpływu. `b1` inne niż `00` (testowane 1 do 7)
+nie dostaje żadnej odpowiedzi. Wniosek: urządzenie trzyma **jeden zestaw 5 slotów** bez dnia tygodnia;
+harmonogram tygodniowy musi być realizowany po stronie HA (zapis slotów na dany dzień o północy).
+
+
+## Siła sygnału (RSSI): nie dostępna lokalnie (stan 2026-11-01)
+
+Sensor `Signal Strength` integracji chmurowej nie ma odpowiednika: w ramkach TLV `/sys` (moduł, aplikacja,
+MCU, wersje) nie ma wartości sygnału, a raport `52/25` jej nie niesie. Binarna ramka `/sys` z bootu
+(`000a 0064 0012 7e11c379 37e0 8001 001a 8071 0022 020a e000` po 9-bajtowym nagłówku) ma niezidentyfikowane
+pola (`0x64` = 100 to kandydat na wartość procentową); z jednej próbki nie da się tego rozstrzygnąć.
+Integracja zapisuje tę ramkę jako atrybut `boot_binary` sensora wersji, żeby porównać kolejne boty
+przy zmienionych warunkach radiowych, oraz wystawia zdarzenie `aroma_link_local_frame` i serwis `send_frame`
+do badania kolejnych komend (np. nieznanych `52/xx`).

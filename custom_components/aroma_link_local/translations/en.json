@@ -14,16 +14,328 @@
     "step": {
       "init": {
         "title": "Aroma-Link Local options",
+        "menu_options": {
+          "settings": "Connection and polling",
+          "gates": "Gating (HVAC, occupancy, motion)"
+        }
+      },
+      "settings": {
+        "title": "Connection and polling",
         "data": {
           "query_interval": "State poll interval (seconds, 0 = off)",
           "uplink_wildcard": "Uplink topic (device to HA)",
           "downlink_pattern": "Downlink topic pattern"
         },
         "data_description": {
-          "query_interval": "How often to ask each device for its state. 0 disables polling.",
+          "query_interval": "How often to ask each device for its status and schedule. 0 disables polling.",
           "uplink_wildcard": "MQTT subscription for device messages. Covers the control and telemetry topics.",
           "downlink_pattern": "Command topic. '{id}' is replaced with the device topic id."
         }
+      },
+      "gates": {
+        "title": "Gating: choose the device",
+        "data": {
+          "device": "Device"
+        }
+      },
+      "gate_config": {
+        "title": "Gating",
+        "description": "Optional gates for scheduled windows. Without any gate the schedule runs as written. Gating is active only after a schedule was saved from Home Assistant and 'Schedule enabled' is on.",
+        "data": {
+          "climate_entity": "HVAC (climate entity)",
+          "occupancy_entity": "Occupancy (on = someone home)",
+          "motion_entities": "Motion sensors (Night Owl)",
+          "hvac_on_delay_minutes": "HVAC on-delay (min)",
+          "hvac_off_delay_minutes": "HVAC off-delay (min)",
+          "occupancy_off_delay_minutes": "Occupancy off-delay (min)",
+          "gating_mode": "Gating mode",
+          "keep_fan_on": "Keep the fan on while diffusing"
+        },
+        "data_description": {
+          "climate_entity": "Diffuse only while the climate entity reports an active hvac_action.",
+          "occupancy_entity": "Diffuse inside windows only while this entity is on.",
+          "motion_entities": "Night Owl runs only after motion within the linger time.",
+          "hvac_on_delay_minutes": "HVAC must be active this long before the gate opens.",
+          "hvac_off_delay_minutes": "A closed HVAC gate must last this long before diffusing stops.",
+          "occupancy_off_delay_minutes": "Occupancy must stay off this long before diffusing stops.",
+          "gating_mode": "slots: schedule flip, no power beeps. power: the decision switches power.",
+          "keep_fan_on": "Turn the device fan on whenever the gating wants it diffusing."
+        }
+      }
+    },
+    "abort": {
+      "no_devices": "No Aroma-Link device has been discovered yet. Power-cycle the diffuser and retry."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "firmware_version": {
+        "name": "Firmware version"
+      },
+      "last_update": {
+        "name": "Last update"
+      },
+      "work_status": {
+        "name": "Work status",
+        "state": {
+          "off": "Off",
+          "diffusing": "Diffusing",
+          "paused": "Paused",
+          "idle": "Idle (no window)"
+        }
+      },
+      "work_remain": {
+        "name": "Work remaining"
+      },
+      "pause_remain": {
+        "name": "Pause remaining"
+      },
+      "device_clock": {
+        "name": "Device clock"
+      },
+      "clock_drift": {
+        "name": "Clock drift"
+      },
+      "cumulative_runtime": {
+        "name": "Cumulative runtime"
+      },
+      "on_count": {
+        "name": "On count"
+      },
+      "pump_count": {
+        "name": "Pump count"
+      },
+      "oil_level": {
+        "name": "Oil level"
+      },
+      "oil_remaining": {
+        "name": "Oil remaining"
+      }
+    },
+    "number": {
+      "work_duration": {
+        "name": "Work duration"
+      },
+      "pause_duration": {
+        "name": "Pause duration"
+      }
+    },
+    "switch": {
+      "schedule_enabled": {
+        "name": "Schedule enabled"
+      },
+      "night_owl": {
+        "name": "Night Owl"
+      }
+    },
+    "binary_sensor": {
+      "scheduled_on": {
+        "name": "Scheduled on"
+      }
+    },
+    "button": {
+      "oil_refill_keep_calibration": {
+        "name": "Refill"
+      }
+    }
+  },
+  "services": {
+    "sync_schedules": {
+      "name": "Sync schedule",
+      "description": "Write today's slots to the device now if they differ from the model.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "Device id, MAC or HA device id (optional with a single device)."
+        }
+      }
+    },
+    "set_schedule": {
+      "name": "Set schedule",
+      "description": "Replace the weekly schedule (Monday=0 ... Sunday=6, up to 4 windows per day).",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "Optional with a single device."
+        },
+        "schedule": {
+          "name": "Schedule",
+          "description": "Object with a days map, see the README."
+        }
+      }
+    },
+    "import_schedule": {
+      "name": "Import schedule from device",
+      "description": "Use the device's current slots as the window set of every weekday.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "Optional with a single device."
+        }
+      }
+    },
+    "set_night_owl": {
+      "name": "Set Night Owl",
+      "description": "Configure Night Owl: the low-intensity run outside the scheduled windows. Per-day permission lives in the schedule (night_owl flag per day).",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "Optional with a single device."
+        },
+        "mode": {
+          "name": "Mode",
+          "description": "outside_windows or fixed."
+        },
+        "fixed_start": {
+          "name": "Fixed start",
+          "description": "HH:MM, mode fixed."
+        },
+        "fixed_end": {
+          "name": "Fixed end",
+          "description": "HH:MM, may cross midnight."
+        },
+        "work_sec": {
+          "name": "Work seconds",
+          "description": "Per cycle."
+        },
+        "pause_sec": {
+          "name": "Pause seconds",
+          "description": "Per cycle."
+        },
+        "level": {
+          "name": "Level",
+          "description": "Intensity 1 to 3."
+        },
+        "linger_minutes": {
+          "name": "Motion linger",
+          "description": "Minutes Night Owl keeps running after the last motion (gating)."
+        }
+      }
+    },
+    "start_timed_run": {
+      "name": "Start timed run",
+      "description": "Run the diffuser for a duration regardless of schedule windows. Survives Home Assistant restarts and replaces a run already active.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "Optional with a single device."
+        },
+        "duration_minutes": {
+          "name": "Duration (minutes)",
+          "description": "1 to 1440."
+        },
+        "work_sec": {
+          "name": "Work seconds per cycle",
+          "description": "Defaults to the Work duration setting."
+        },
+        "pause_sec": {
+          "name": "Pause seconds per cycle",
+          "description": "Defaults to the Pause duration setting."
+        }
+      }
+    },
+    "cancel_timed_run": {
+      "name": "Cancel timed run",
+      "description": "Cancel the auto-off timer. The device keeps running until the schedule or a manual command turns it off.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "Optional with a single device."
+        }
+      }
+    },
+    "oil_refill": {
+      "name": "Record oil refill",
+      "description": "Start a new oil basis (new bottle). Keeps the calibrated usage rate unless told otherwise.",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "Optional with a single device."
+        },
+        "fill_volume": {
+          "name": "Fill volume",
+          "description": "Millilitres in the bottle (default: bottle capacity)."
+        },
+        "fill_date": {
+          "name": "Fill date",
+          "description": "ISO date, default now."
+        },
+        "keep_calibration": {
+          "name": "Keep calibration",
+          "description": "Off also forgets the calibrated rate."
+        }
+      }
+    },
+    "oil_calibrate": {
+      "name": "Calibrate oil usage",
+      "description": "start, end (after the measured run), finalize (rate = used oil / pump work since fill), manual (rate, or start/end volumes with runtime hours), or set (store the values only).",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "Optional with a single device."
+        },
+        "action": {
+          "name": "Action",
+          "description": "start, end, finalize, manual or set."
+        },
+        "bottle_capacity": {
+          "name": "Bottle capacity",
+          "description": "ml."
+        },
+        "fill_volume": {
+          "name": "Fill volume",
+          "description": "ml at refill."
+        },
+        "measured_remaining": {
+          "name": "Measured remaining",
+          "description": "ml measured after the run."
+        },
+        "manual_rate_ml_per_hour": {
+          "name": "Manual rate",
+          "description": "ml per hour of pump work."
+        },
+        "manual_start_volume": {
+          "name": "Manual start volume",
+          "description": "ml."
+        },
+        "manual_end_volume": {
+          "name": "Manual end volume",
+          "description": "ml."
+        },
+        "manual_runtime_hours": {
+          "name": "Manual runtime",
+          "description": "Hours of pump work between the two volumes."
+        }
+      }
+    },
+    "send_frame": {
+      "name": "Send raw frame (diagnostics)",
+      "description": "Send one inner frame (start, direction, MAC, command, sub-command, payload, XOR checksum are built for you). Replies are fired as aroma_link_local_frame events (Developer tools, Events).",
+      "fields": {
+        "device_id": {
+          "name": "Device",
+          "description": "Optional with a single device."
+        },
+        "cmd": {
+          "name": "Command",
+          "description": "Hex byte, 52 query, 57 control."
+        },
+        "sub": {
+          "name": "Sub-command",
+          "description": "Hex byte."
+        },
+        "payload": {
+          "name": "Payload",
+          "description": "Hex bytes without spaces."
+        }
+      }
+    }
+  },
+  "selector": {
+    "gating_mode": {
+      "options": {
+        "slots": "Schedule flip (slots)",
+        "power": "Power switching"
       }
     }
   }

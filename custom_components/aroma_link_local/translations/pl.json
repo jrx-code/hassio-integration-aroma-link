@@ -14,16 +14,328 @@
     "step": {
       "init": {
         "title": "Opcje Aroma-Link Local",
+        "menu_options": {
+          "settings": "Połączenie i odpytywanie",
+          "gates": "Bramkowanie (HVAC, obecność, ruch)"
+        }
+      },
+      "settings": {
+        "title": "Połączenie i odpytywanie",
         "data": {
-          "query_interval": "Interwał odpytywania stanu (sekundy, 0 = wyłączone)",
+          "query_interval": "Interwał odpytywania (sekundy, 0 = wyłączone)",
           "uplink_wildcard": "Temat uplink (urządzenie do HA)",
           "downlink_pattern": "Wzorzec tematu downlink"
         },
         "data_description": {
-          "query_interval": "Jak często pytać urządzenia o stan. 0 wyłącza odpytywanie.",
+          "query_interval": "Jak często pytać urządzenie o status i harmonogram. 0 wyłącza odpytywanie.",
           "uplink_wildcard": "Subskrypcja MQTT wiadomości z urządzeń. Obejmuje tematy sterowania i telemetrii.",
-          "downlink_pattern": "Temat komend. '{id}' zostanie zastąpione identyfikatorem tematu urządzenia."
+          "downlink_pattern": "Temat komend. '{id}' jest zastępowane identyfikatorem urządzenia."
         }
+      },
+      "gates": {
+        "title": "Bramkowanie: wybierz urządzenie",
+        "data": {
+          "device": "Urządzenie"
+        }
+      },
+      "gate_config": {
+        "title": "Bramkowanie",
+        "description": "Opcjonalne bramki dla okien harmonogramu. Bez bramek harmonogram działa tak, jak zapisany. Bramkowanie działa dopiero po zapisaniu harmonogramu z Home Assistanta i przy włączonym 'Harmonogram włączony'.",
+        "data": {
+          "climate_entity": "HVAC (encja climate)",
+          "occupancy_entity": "Obecność (on = ktoś jest w domu)",
+          "motion_entities": "Czujniki ruchu (Night Owl)",
+          "hvac_on_delay_minutes": "Opóźnienie włączenia HVAC (min)",
+          "hvac_off_delay_minutes": "Opóźnienie wyłączenia HVAC (min)",
+          "occupancy_off_delay_minutes": "Opóźnienie wyłączenia obecności (min)",
+          "gating_mode": "Tryb bramkowania",
+          "keep_fan_on": "Wentylator włączony podczas rozpylania"
+        },
+        "data_description": {
+          "climate_entity": "Rozpylaj tylko, gdy encja climate zgłasza aktywne hvac_action.",
+          "occupancy_entity": "Rozpylaj w oknach tylko, gdy encja jest włączona.",
+          "motion_entities": "Night Owl działa tylko po ruchu w czasie podtrzymania.",
+          "hvac_on_delay_minutes": "HVAC musi być aktywne tak długo, zanim bramka się otworzy.",
+          "hvac_off_delay_minutes": "Zamknięta bramka HVAC musi trwać tyle, zanim rozpylanie ustanie.",
+          "occupancy_off_delay_minutes": "Obecność musi być wyłączona tak długo, zanim rozpylanie ustanie.",
+          "gating_mode": "slots: przełączanie harmonogramu, bez pisków. power: decyzja przełącza zasilanie.",
+          "keep_fan_on": "Włącz wentylator urządzenia, gdy bramkowanie chce rozpylania."
+        }
+      }
+    },
+    "abort": {
+      "no_devices": "Nie wykryto jeszcze żadnego urządzenia Aroma-Link. Zrestartuj zasilanie dyfuzora i spróbuj ponownie."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "firmware_version": {
+        "name": "Wersja firmware"
+      },
+      "last_update": {
+        "name": "Ostatnia aktualizacja"
+      },
+      "work_status": {
+        "name": "Status pracy",
+        "state": {
+          "off": "Wyłączony",
+          "diffusing": "Rozpyla",
+          "paused": "Pauza",
+          "idle": "Bezczynny (poza oknem)"
+        }
+      },
+      "work_remain": {
+        "name": "Pozostały czas pracy"
+      },
+      "pause_remain": {
+        "name": "Pozostały czas pauzy"
+      },
+      "device_clock": {
+        "name": "Zegar urządzenia"
+      },
+      "clock_drift": {
+        "name": "Rozjazd zegara"
+      },
+      "cumulative_runtime": {
+        "name": "Łączny czas pracy"
+      },
+      "on_count": {
+        "name": "Liczba włączeń"
+      },
+      "pump_count": {
+        "name": "Liczba cykli pompy"
+      },
+      "oil_level": {
+        "name": "Poziom olejku"
+      },
+      "oil_remaining": {
+        "name": "Pozostały olejek"
+      }
+    },
+    "number": {
+      "work_duration": {
+        "name": "Czas pracy"
+      },
+      "pause_duration": {
+        "name": "Czas pauzy"
+      }
+    },
+    "switch": {
+      "schedule_enabled": {
+        "name": "Harmonogram włączony"
+      },
+      "night_owl": {
+        "name": "Night Owl"
+      }
+    },
+    "binary_sensor": {
+      "scheduled_on": {
+        "name": "Pracuje wg harmonogramu"
+      }
+    },
+    "button": {
+      "oil_refill_keep_calibration": {
+        "name": "Uzupełniono olejek"
+      }
+    }
+  },
+  "services": {
+    "sync_schedules": {
+      "name": "Synchronizuj harmonogram",
+      "description": "Zapisz dzisiejsze sloty do urządzenia, jeśli różnią się od modelu.",
+      "fields": {
+        "device_id": {
+          "name": "Urządzenie",
+          "description": "Id, MAC lub id urządzenia HA (opcjonalnie przy jednym urządzeniu)."
+        }
+      }
+    },
+    "set_schedule": {
+      "name": "Ustaw harmonogram",
+      "description": "Zastąp harmonogram tygodniowy (pn=0 ... nd=6, do 4 okien na dzień).",
+      "fields": {
+        "device_id": {
+          "name": "Urządzenie",
+          "description": "Opcjonalnie przy jednym urządzeniu."
+        },
+        "schedule": {
+          "name": "Harmonogram",
+          "description": "Obiekt z mapą days, patrz README."
+        }
+      }
+    },
+    "import_schedule": {
+      "name": "Importuj harmonogram z urządzenia",
+      "description": "Użyj bieżących slotów urządzenia jako okien każdego dnia tygodnia.",
+      "fields": {
+        "device_id": {
+          "name": "Urządzenie",
+          "description": "Opcjonalnie przy jednym urządzeniu."
+        }
+      }
+    },
+    "set_night_owl": {
+      "name": "Ustaw Night Owl",
+      "description": "Konfiguracja Night Owl: słabe rozpylanie poza oknami harmonogramu. Zgoda na dany dzień jest w harmonogramie (flaga night_owl).",
+      "fields": {
+        "device_id": {
+          "name": "Urządzenie",
+          "description": "Opcjonalnie przy jednym urządzeniu."
+        },
+        "mode": {
+          "name": "Tryb",
+          "description": "outside_windows lub fixed."
+        },
+        "fixed_start": {
+          "name": "Start stały",
+          "description": "HH:MM, tryb fixed."
+        },
+        "fixed_end": {
+          "name": "Koniec stały",
+          "description": "HH:MM, może przekraczać północ."
+        },
+        "work_sec": {
+          "name": "Sekundy pracy",
+          "description": "Na cykl."
+        },
+        "pause_sec": {
+          "name": "Sekundy pauzy",
+          "description": "Na cykl."
+        },
+        "level": {
+          "name": "Poziom",
+          "description": "Intensywność 1 do 3."
+        },
+        "linger_minutes": {
+          "name": "Czas po ruchu",
+          "description": "Minuty pracy Night Owl po ostatnim ruchu (bramkowanie)."
+        }
+      }
+    },
+    "start_timed_run": {
+      "name": "Uruchom na czas",
+      "description": "Rozpylaj przez zadany czas niezależnie od okien harmonogramu. Przetrwa restart Home Assistanta i zastępuje trwający przebieg.",
+      "fields": {
+        "device_id": {
+          "name": "Urządzenie",
+          "description": "Opcjonalnie przy jednym urządzeniu."
+        },
+        "duration_minutes": {
+          "name": "Czas (minuty)",
+          "description": "1 do 1440."
+        },
+        "work_sec": {
+          "name": "Sekundy pracy na cykl",
+          "description": "Domyślnie wg ustawienia Czas pracy."
+        },
+        "pause_sec": {
+          "name": "Sekundy pauzy na cykl",
+          "description": "Domyślnie wg ustawienia Czas pauzy."
+        }
+      }
+    },
+    "cancel_timed_run": {
+      "name": "Anuluj przebieg czasowy",
+      "description": "Anuluj wyłączenie czasowe. Urządzenie pracuje dalej do wyłączenia przez harmonogram lub ręcznie.",
+      "fields": {
+        "device_id": {
+          "name": "Urządzenie",
+          "description": "Opcjonalnie przy jednym urządzeniu."
+        }
+      }
+    },
+    "oil_refill": {
+      "name": "Zapisz uzupełnienie olejku",
+      "description": "Nowa podstawa zużycia (nowa butelka). Zachowuje skalibrowane zużycie, chyba że wskażesz inaczej.",
+      "fields": {
+        "device_id": {
+          "name": "Urządzenie",
+          "description": "Opcjonalnie przy jednym urządzeniu."
+        },
+        "fill_volume": {
+          "name": "Objętość",
+          "description": "Mililitry w butelce (domyślnie pojemność)."
+        },
+        "fill_date": {
+          "name": "Data",
+          "description": "Data ISO, domyślnie teraz."
+        },
+        "keep_calibration": {
+          "name": "Zachowaj kalibrację",
+          "description": "Wyłączone kasuje też skalibrowane zużycie."
+        }
+      }
+    },
+    "oil_calibrate": {
+      "name": "Kalibracja zużycia olejku",
+      "description": "start, end (po pomiarowym przebiegu), finalize (zużycie = zużyty olejek / praca pompy od napełnienia), manual (stawka albo objętości z czasem pracy) lub set (tylko zapis wartości).",
+      "fields": {
+        "device_id": {
+          "name": "Urządzenie",
+          "description": "Opcjonalnie przy jednym urządzeniu."
+        },
+        "action": {
+          "name": "Akcja",
+          "description": "start, end, finalize, manual lub set."
+        },
+        "bottle_capacity": {
+          "name": "Pojemność butelki",
+          "description": "ml."
+        },
+        "fill_volume": {
+          "name": "Objętość napełnienia",
+          "description": "ml przy uzupełnieniu."
+        },
+        "measured_remaining": {
+          "name": "Zmierzona pozostałość",
+          "description": "ml zmierzone po przebiegu."
+        },
+        "manual_rate_ml_per_hour": {
+          "name": "Stawka ręczna",
+          "description": "ml na godzinę pracy pompy."
+        },
+        "manual_start_volume": {
+          "name": "Objętość początkowa",
+          "description": "ml."
+        },
+        "manual_end_volume": {
+          "name": "Objętość końcowa",
+          "description": "ml."
+        },
+        "manual_runtime_hours": {
+          "name": "Czas pracy (ręcznie)",
+          "description": "Godziny pracy pompy między objętościami."
+        }
+      }
+    },
+    "send_frame": {
+      "name": "Wyślij surową ramkę (diagnostyka)",
+      "description": "Wysyła jedną ramkę wewnętrzną (start, kierunek, MAC, komenda, podkomenda, payload i suma XOR są budowane za Ciebie). Odpowiedzi trafiają jako zdarzenia aroma_link_local_frame (Narzędzia deweloperskie, Zdarzenia).",
+      "fields": {
+        "device_id": {
+          "name": "Urządzenie",
+          "description": "Opcjonalnie przy jednym urządzeniu."
+        },
+        "cmd": {
+          "name": "Komenda",
+          "description": "Bajt hex, 52 zapytanie, 57 sterowanie."
+        },
+        "sub": {
+          "name": "Podkomenda",
+          "description": "Bajt hex."
+        },
+        "payload": {
+          "name": "Payload",
+          "description": "Bajty hex bez spacji."
+        }
+      }
+    }
+  },
+  "selector": {
+    "gating_mode": {
+      "options": {
+        "slots": "Przełączanie harmonogramu (sloty)",
+        "power": "Przełączanie zasilania"
       }
     }
   }

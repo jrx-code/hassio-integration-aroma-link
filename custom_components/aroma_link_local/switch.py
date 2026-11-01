@@ -3,16 +3,14 @@ from __future__ import annotations
 
 import logging
 
-from homeassistant.components import mqtt
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
-from homeassistant.helpers.entity import DeviceInfo
 
-from . import AromaDevice
 from . import aroma_codec as codec
-from .const import DOMAIN, SIGNAL_NEW_DEVICE, signal_uplink
+from .const import DOMAIN, SIGNAL_NEW_DEVICE
+from .entity import AromaEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -22,13 +20,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     known: set[str] = set()
 
     @callback
-    def _add(dev: AromaDevice):
+    def _add(dev):
         if dev.topic_id in known:
             return
         known.add(dev.topic_id)
         async_add_entities([
-            AromaSwitch(hass, dev, "power", "Power", codec.SUB_POWER, "mdi:spray"),
-            AromaSwitch(hass, dev, "fan", "Fan", codec.SUB_FAN, "mdi:fan"),
+            AromaSwitch(hass, hub, dev, "power", "Power", codec.SUB_POWER, "mdi:spray"),
+            AromaSwitch(hass, hub, dev, "fan", "Fan", codec.SUB_FAN, "mdi:fan"),
+            FlagSwitch(hass, hub, dev, "schedule_enabled", "schedule_enabled", "mdi:calendar-check"),
+            FlagSwitch(hass, hub, dev, "night_owl", "night_owl_enabled", "mdi:owl"),
         ])
 
     entry.async_on_unload(async_dispatcher_connect(hass, SIGNAL_NEW_DEVICE, _add))
@@ -37,42 +37,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
         _add(dev)
 
 
-class AromaSwitch(SwitchEntity):
-    _attr_has_entity_name = True
-
-    def __init__(self, hass, dev: AromaDevice, key, name, sub, icon):
-        self.hass = hass
-        self._dev = dev
+class AromaSwitch(AromaEntity, SwitchEntity):
+    def __init__(self, hass, hub, dev, key, name, sub, icon):
+        super().__init__(hass, dev, key, name)
+        self._hub = hub
+        self._key = key
         self._sub = sub
-        self._attr_name = name
         self._attr_icon = icon
-        mac_id = dev.mac.replace(":", "").lower()
-        self._attr_unique_id = f"aroma_{mac_id}_{key}"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, mac_id)},
-            name=f"Aroma-Link {dev.mac}",
-            manufacturer="DeWoo / Aroma-Link",
-            model="Pro300",
-            connections={("mac", dev.mac)},
-        )
-        self._attr_is_on = False
 
-    async def async_added_to_hass(self):
-        @callback
-        def _on_uplink(ev):
-            # 0x53/0x10 = power state, 0x53/0x11 = fan state (both real, from the device)
-            if (ev[0] == "power" and self._sub == codec.SUB_POWER) or \
-               (ev[0] == "fan" and self._sub == codec.SUB_FAN):
-                self._attr_is_on = ev[1]
-                self.async_write_ha_state()
-        self.async_on_remove(
-            async_dispatcher_connect(self.hass, signal_uplink(self._dev.topic_id), _on_uplink))
+    @property
+    def is_on(self) -> bool:
+        return bool(getattr(self._dev, self._key))   # restored state; None counts as off
+
+    @callback
+    def _on_event(self, ev) -> bool:
+        return ev[0] == self._key
 
     async def _send(self, on: bool):
-        inner = codec.switch_frame(self._dev.mac, self._sub, on)
-        payload = self._dev.env.wrap(inner, tag=codec.TAG_DOWN)
-        await mqtt.async_publish(self.hass, self._dev.t_down, payload)
-        self._attr_is_on = on
+        await self._hub.async_send(self._dev, codec.switch_frame(self._dev.mac, self._sub, on))
+        setattr(self._dev, self._key, on)        # optimistic until the 53/1x state frame lands
         self.async_write_ha_state()
 
     async def async_turn_on(self, **kwargs):
@@ -80,3 +63,31 @@ class AromaSwitch(SwitchEntity):
 
     async def async_turn_off(self, **kwargs):
         await self._send(False)
+
+
+class FlagSwitch(AromaEntity, SwitchEntity):
+    """A persisted master flag of the device model (Schedule enabled, Night Owl)."""
+
+    def __init__(self, hass, hub, dev, key, flag, icon):
+        super().__init__(hass, dev, key)
+        self._hub = hub
+        self._flag = flag
+        self._attr_icon = icon
+
+    @property
+    def is_on(self) -> bool:
+        return getattr(self._hub.models.get(self._dev.topic_id), self._flag)
+
+    @callback
+    def _on_event(self, ev) -> bool:
+        return ev[0] == "model"
+
+    async def _set(self, value: bool) -> None:
+        setattr(self._hub.models.get(self._dev.topic_id), self._flag, value)
+        self._hub.models.changed(self._dev.topic_id, "flags")
+
+    async def async_turn_on(self, **kwargs):
+        await self._set(True)
+
+    async def async_turn_off(self, **kwargs):
+        await self._set(False)

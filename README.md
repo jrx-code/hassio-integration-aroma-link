@@ -34,15 +34,31 @@ wall changes accordingly.
 
 ## Features
 
+Everything the cloud integration offered, now local (one design difference: the diffuser keeps a
+single set of 5 schedule slots, so Home Assistant owns the weekly schedule and writes the current
+day's slots at midnight).
+
 | | |
 |---|---|
-| **Auto-discovery** | One integration entry. Every diffuser that publishes on the broker becomes a device: topic id from the MQTT topic, MAC from the frame. Nothing to type in; new diffusers appear by themselves. |
-| **Entities** | `switch` **Power** (pump, scent output) and `switch` **Fan**, per diffuser. |
-| **State** | Power and fan state are read back from the device (`53/10`, `53/11`, pushed after every command). |
-| **Polling** | Optional periodic state query per device, off by default. |
-| **Persistence** | Discovered devices are remembered across restarts and queried right after start, so entities do not sit `unavailable` waiting for the device to speak first. |
-| **Footprint** | Python standard library only, no extra requirements. Depends on the core `mqtt` integration. |
-| **Configurable** | Uplink wildcard and downlink topic pattern can be changed if a firmware ever moves them. |
+| **Auto-discovery** | One integration entry. Every diffuser that publishes on the broker becomes a device. |
+| **Control** | `Power` and `Fan` switches, state read back from the device. Changes made on the device show up within the poll interval. |
+| **Status** | `Work status` (off / diffusing / paused), `Work remaining`, `Pause remaining`, `Device clock`, `Clock drift`, `Last update`, `Firmware version` (with model and module telemetry). |
+| **Weekly schedule** | Up to 4 windows per weekday, level 1-3, work/pause seconds; written to the device and verified, drift repaired. Switch `Schedule enabled`, services `set_schedule`, `import_schedule`, `sync_schedules`. |
+| **Night Owl** | Low-intensity run outside the windows (slot 5), per-day permission, fixed or outside-windows mode, motion-gated. Switch `Night Owl`, service `set_night_owl`. |
+| **Timed run** | `start_timed_run` / `cancel_timed_run`, survives restarts, overlay in slot 5, hands power back at the end. |
+| **Gating** | Optional HVAC, occupancy and motion gates with delays, per device, in the integration options. Two modes: schedule flip (default, no power beeps) and power switching. |
+| **Usage and oil** | `Cumulative runtime`, `On count`, `Pump count` (estimated from power and work phase), `Oil level`, `Oil remaining`, `Refill` button, services `oil_refill`, `oil_calibrate`. |
+| **Diagnostics** | `Scheduled on`, service `send_frame`, `aroma_link_local_frame` events. |
+| **Schedule card** | The cjam28 schedule card ships with the integration and loads by itself: `type: custom:aroma-link-schedule-card`. |
+| **Persistence** | Devices, schedule, flags, timed run, counters and oil state survive restarts. |
+| **Footprint** | Python standard library only. Depends on the core `mqtt` integration. |
+
+### Notes on the data
+
+- Counters and oil are **estimates**. The device reports no counters; they are derived from the power flag and work phase in the status report, split by the active slot's work/pause durations. Calibrate the oil with `oil_calibrate` (start, run, end, set `measured_remaining`, finalize) or give a rate.
+- The schedule and gating are inert until a schedule was saved from Home Assistant (`set_schedule`, the card, or `import_schedule` to adopt what the device holds). A fresh install never overwrites the device or fights manual use.
+- Signal strength (RSSI) is not available locally; it was not found in the telemetry. See `docs/protocol.md`.
+- The device clock is local time; check `Clock drift` if windows seem shifted.
 
 ## How it works
 
@@ -104,12 +120,11 @@ Options (Settings, the integration, **Configure**):
 
 | Option | Default | Meaning |
 |---|---|---|
-| State poll interval | `0` (off) | Seconds between periodic state queries sent to each device, 0 to 3600. `0` disables the timer. One query is always sent right after start for every remembered device. |
+| State poll interval | `60` | Seconds between status and schedule queries per device, 0 to 3600. `0` disables the timer (status then updates only on commands and at start). |
 | Uplink topic | `q/2/d/+/+` | MQTT subscription for device messages. Covers both `/bus` and `/sys`. |
 | Downlink pattern | `q/1/d/{id}/bus` | Command topic. `{id}` is replaced with the device topic id. |
 
-A poll interval of 60 is a reasonable choice if you want the schedule dump refreshed regularly; the
-fan state arrives without polling.
+Gating (HVAC, occupancy, motion) is configured per device under *Configure, Gating*.
 
 Naming: the device is created as `Aroma-Link <MAC>` with entities `Power` and `Fan`. Rename the
 device in Home Assistant to fit your own scheme; entity ids follow Home Assistant's normal rules.
@@ -315,17 +330,12 @@ minute (`17 3B` = 23:59); work and pause are big-endian seconds.
 
 ## Limitations and roadmap
 
-- **State only after commands and on boot.** The device reports power and fan state when it
-  acts on a command (`53/10`, `53/11`); the periodic query returns the schedule dump, not a power
-  or fan flag, so a change made on the device's own buttons shows up in Home Assistant only with
-  the next command or reboot.
-- **Schedule** read and write are implemented in the codec (`Slot`, `schedule_frame`,
-  `parse_schedule`) but not exposed as entities yet.
-- **`/sys` telemetry** (firmware, module versions) is received but not parsed into sensors.
-- **Oil level**: the device does not report it. The vendor app estimates it from run time; not
-  implemented here.
-- Tested with one Pro300. Other Aroma-Link models use the same app and most likely the same
-  protocol; a report with a capture is welcome.
+- **No signal strength** and no firmware update path; both would need more protocol work.
+- **Counters and oil are estimates** (see above); the error is bounded by the poll interval (default 60 s).
+- **State after changes on the device** shows with the next status report (poll interval); the fan state is pushed immediately.
+- **`/sys` telemetry** is shown as attributes of the firmware sensor, not as separate sensors.
+- The card was ported from the cloud integration; layouts are unchanged.
+- Tested with one Pro300. Other Aroma-Link models use the same app and most likely the same protocol; a report with a capture is welcome.
 
 ## Troubleshooting
 

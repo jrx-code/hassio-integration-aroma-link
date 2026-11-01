@@ -7,6 +7,7 @@ byte before the checksum.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 
 START = 0xAA
 END = 0xEE
@@ -70,6 +71,11 @@ def query_frame(mac: str) -> bytes:
     return build_inner(mac, CMD_QUERY, SUB_SCHEDULE, bytes([0x02, 0x00, 0x01, 0x1F]))
 
 
+def status_frame(mac: str) -> bytes:
+    """Query the status report (clock, work status, remaining times); same payload as 52/15."""
+    return build_inner(mac, CMD_QUERY, SUB_STATUS, bytes([0x02, 0x00, 0x01, 0x1F]))
+
+
 @dataclass
 class Slot:
     """One schedule program (9 wire bytes)."""
@@ -113,6 +119,9 @@ def parse_schedule(payload: bytes) -> list[Slot]:
 
 
 CMD_STATE = 0x53   # uplink that carries actual state (not the 0x57 command-ack)
+SUB_IDENTITY = 0xF1   # boot announce: IMEI, firmware, model
+SUB_STATUS = 0x25     # 52/25 status report: clock, work status, remaining times
+WORK_STATES = {0: "off", 1: "diffusing", 2: "paused"}
 
 
 def interpret_uplink(inner: bytes):
@@ -135,6 +144,100 @@ def interpret_uplink(inner: bytes):
         return ("ack", d.sub)
     if d.cmd in (CMD_QUERY, CMD_STATE) and d.sub == SUB_SCHEDULE:
         return ("schedule", parse_schedule(d.payload))
+    if d.cmd == CMD_STATE and d.sub == SUB_IDENTITY:
+        ident = parse_identity(d.payload)
+        return ("identity", ident) if ident else None
+    if d.cmd == CMD_QUERY and d.sub == SUB_STATUS:
+        st = parse_status(d.payload)
+        return ("status", st) if st else None
+    return None
+
+
+def parse_status(payload: bytes) -> dict | None:
+    """Parse the 0x52/0x25 status report (captured and verified live 2026-11-01).
+
+    17 00 | year16 month day hour min sec weekday(1=Mon..7=Sun) | 00 power phase |
+    workRemain16 pauseRemain16 | slotStart(h m) slotEnd(h m) level | 00 00 00
+    The clock is the device's own (local time). power 0/1; phase 0 off / 1 diffusing / 2 paused;
+    the remaining counters tick down while powered (10 -> 4 s seen six seconds apart).
+    """
+    if len(payload) < 22:
+        return None
+    year = int.from_bytes(payload[2:4], "big")
+    mon, day, hour, minute, sec, dow = payload[4:10]
+    try:
+        clock = datetime(year, mon, day, hour, minute, sec)
+    except ValueError:
+        return None
+    return {
+        "clock": clock,
+        "weekday": dow,
+        "power": bool(payload[11]),
+        "work_status": WORK_STATES.get(payload[12], "off"),
+        "work_remain": int.from_bytes(payload[13:15], "big"),
+        "pause_remain": int.from_bytes(payload[15:17], "big"),
+        "slot_start": f"{payload[17]:02d}:{payload[18]:02d}",
+        "slot_end": f"{payload[19]:02d}:{payload[20]:02d}",
+        "level": payload[21],
+    }
+
+
+def parse_identity(payload: bytes) -> dict | None:
+    """Parse the 0x53/0xF1 boot announce payload.
+
+    Captured layout: 32 00 | MAC(6) | virtual IMEI (15 ASCII digits) |
+    firmware ("V1.0.20250416") | 02 | model ("A6/Pro300_2_SEG").
+    """
+    if len(payload) < 8 + 15 + 2:
+        return None
+    rest = payload[8:]
+    fw, sep, model = rest[15:].partition(b"\x02")
+    if not sep:
+        return None
+    try:
+        return {"firmware": fw.decode("ascii"), "model": model.decode("ascii")}
+    except UnicodeDecodeError:
+        return None
+
+
+# /sys telemetry items: id16 | len16 | ASCII value, after the 9-byte envelope header.
+SYS_FIELDS = {
+    0x0B: "module",        # "FC41D"
+    0x13: "app_version",   # "1.0.5app"
+    0x1B: "mcu",           # "MCU:1"
+    0x2B: "sim_id",        # 20 zeros on this unit (no SIM)
+    0x5B: "sdk_version",   # "2.10.3"
+    0x63: "features",      # "AUTO;LBS;WIFI;"
+    0x6B: "version_6b",    # "1.3.0"
+    0x73: "version_73",    # "3.0.0"
+}
+
+
+def parse_sys(payload: bytes) -> dict | None:
+    """Parse a q/2/d/<id>/sys telemetry frame; None when it is not the TLV kind."""
+    if len(payload) < 9 or payload[:2] != bytes([START, START]):
+        return None
+    pos, out = 9, {}
+    while pos + 4 <= len(payload):
+        ident = int.from_bytes(payload[pos:pos + 2], "big")
+        length = int.from_bytes(payload[pos + 2:pos + 4], "big")
+        pos += 4
+        if pos + length > len(payload):
+            return None   # not a TLV frame (the 33-byte binary one overruns)
+        value = payload[pos:pos + length]
+        pos += length
+        try:
+            out[SYS_FIELDS.get(ident, f"item_{ident:02x}")] = value.decode("ascii")
+        except UnicodeDecodeError:
+            return None
+    return out or None
+
+
+def active_slot(slots: list[Slot], now_minutes: int) -> Slot | None:
+    """First enabled slot whose start <= now < end (minutes since midnight)."""
+    for s in slots:
+        if s.enabled and s.start_h * 60 + s.start_m <= now_minutes < s.end_h * 60 + s.end_m:
+            return s
     return None
 
 

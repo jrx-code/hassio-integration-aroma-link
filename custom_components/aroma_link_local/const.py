@@ -7,7 +7,7 @@ CONF_QUERY_INTERVAL = "query_interval"      # seconds; 0 disables periodic state
 CONF_UPLINK_WILDCARD = "uplink_wildcard"    # device->HA subscription
 CONF_DOWNLINK_PATTERN = "downlink_pattern"  # HA->device, {id} = device topic id
 
-DEFAULT_QUERY_INTERVAL = 0
+DEFAULT_QUERY_INTERVAL = 60   # status report + schedule dump every minute
 DEFAULT_UPLINK_WILDCARD = "q/2/d/+/+"   # catches both /bus (control/state) and /sys (telemetry)
 DEFAULT_DOWNLINK_PATTERN = "q/1/d/{id}/bus"
 
