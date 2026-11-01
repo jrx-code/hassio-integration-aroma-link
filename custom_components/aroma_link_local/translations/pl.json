@@ -70,13 +70,13 @@
   "entity": {
     "sensor": {
       "firmware_version": {
-        "name": "Wersja firmware"
+        "name": "Wersja oprogramowania"
       },
       "last_update": {
-        "name": "Ostatnia aktualizacja"
+        "name": "Ostatni odczyt"
       },
       "work_status": {
-        "name": "Status pracy",
+        "name": "Stan cyklu",
         "state": {
           "off": "Wyłączony",
           "diffusing": "Rozpyla",
@@ -85,22 +85,22 @@
         }
       },
       "work_remain": {
-        "name": "Pozostały czas pracy"
+        "name": "Pozostały czas rozpylania"
       },
       "pause_remain": {
         "name": "Pozostały czas pauzy"
       },
       "device_clock": {
-        "name": "Zegar urządzenia"
+        "name": "Czas urządzenia"
       },
       "clock_drift": {
-        "name": "Rozjazd zegara"
+        "name": "Różnica zegara"
       },
       "cumulative_runtime": {
-        "name": "Łączny czas pracy"
+        "name": "Łączny czas pracy pompy"
       },
       "on_count": {
-        "name": "Liczba włączeń"
+        "name": "Liczba włączeń zasilania"
       },
       "pump_count": {
         "name": "Liczba cykli pompy"
@@ -114,28 +114,31 @@
     },
     "number": {
       "work_duration": {
-        "name": "Czas pracy"
+        "name": "Domyślny czas rozpylania"
       },
       "pause_duration": {
-        "name": "Czas pauzy"
+        "name": "Domyślny czas pauzy"
+      },
+      "bottle_capacity": {
+        "name": "Pojemność butelki"
       }
     },
     "switch": {
       "schedule_enabled": {
-        "name": "Harmonogram włączony"
+        "name": "Automatyczne zasilanie"
       },
       "night_owl": {
-        "name": "Night Owl"
+        "name": "Nocne rozpylanie po ruchu"
       }
     },
     "binary_sensor": {
       "scheduled_on": {
-        "name": "Pracuje wg harmonogramu"
+        "name": "Rozpylanie dozwolone"
       }
     },
     "button": {
       "oil_refill_keep_calibration": {
-        "name": "Uzupełniono olejek"
+        "name": "Uzupełniono olejek do pełna"
       }
     }
   },

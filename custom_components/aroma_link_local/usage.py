@@ -61,8 +61,8 @@ def sample(u: Usage, ts: float, power: bool, phase: str, work_sec: int, pause_se
 
 @dataclass
 class Oil:
-    bottle_capacity: float = 100.0      # ml
-    fill_volume: float = 100.0          # ml in the bottle at the last refill
+    bottle_capacity: float = 300.0      # ml; Pro300 holds 300, other models 400 or 1000 (see capacity_from_model)
+    fill_volume: float = 300.0          # ml in the bottle at the last refill
     fill_date: str | None = None
     usage_rate: float | None = None     # ml per second of pump work (None = not calibrated)
     calibration_state: str = "Idle"     # Idle | Measuring | Ready to Finalize | Calibrated
@@ -81,6 +81,13 @@ class Oil:
     def from_dict(cls, data: dict) -> Oil:
         base = cls()
         return cls(**{k: data.get(k, getattr(base, k)) for k in vars(base)})
+
+
+def capacity_from_model(model: str | None) -> float | None:
+    """Bottle ml from a model string such as 'A6/Pro300_2_SEG' (Pro300 -> 300); None if unknown."""
+    import re
+    m = re.search(r"Pro(\d{3,4})", model or "")
+    return float(m.group(1)) if m else None
 
 
 SETTABLE = ("bottle_capacity", "fill_volume", "measured_remaining", "manual_rate_ml_per_hour",

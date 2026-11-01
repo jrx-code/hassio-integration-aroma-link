@@ -42,7 +42,7 @@ from .models_store import ModelStore
 from .reconciler import Reconciler
 from .services import async_register_services
 from .timed_run import TimedRunManager
-from .usage import Oil, Usage, sample
+from .usage import Oil, Usage, capacity_from_model, sample
 from .ws_api import async_register as async_register_ws
 
 _LOGGER = logging.getLogger(__name__)
@@ -277,7 +277,13 @@ class AromaHub:
         return Usage.from_dict(self.models.get(dev.topic_id).usage)
 
     def oil(self, dev: AromaDevice) -> Oil:
-        return Oil.from_dict(self.models.get(dev.topic_id).oil)
+        raw = self.models.get(dev.topic_id).oil
+        oil = Oil.from_dict(raw)
+        if "bottle_capacity" not in raw:          # never set: take the model's size when the announce told us
+            cap = capacity_from_model(dev.identity.get("model"))
+            if cap:
+                oil.bottle_capacity = oil.fill_volume = cap
+        return oil
 
     def save_usage(self, dev: AromaDevice, usage: Usage | None = None, oil: Oil | None = None) -> None:
         model = self.models.get(dev.topic_id)

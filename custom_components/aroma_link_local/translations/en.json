@@ -70,13 +70,13 @@
   "entity": {
     "sensor": {
       "firmware_version": {
-        "name": "Firmware version"
+        "name": "Software version"
       },
       "last_update": {
-        "name": "Last update"
+        "name": "Last reading"
       },
       "work_status": {
-        "name": "Work status",
+        "name": "Cycle state",
         "state": {
           "off": "Off",
           "diffusing": "Diffusing",
@@ -85,25 +85,25 @@
         }
       },
       "work_remain": {
-        "name": "Work remaining"
+        "name": "Spray time left"
       },
       "pause_remain": {
-        "name": "Pause remaining"
+        "name": "Pause time left"
       },
       "device_clock": {
-        "name": "Device clock"
+        "name": "Device time"
       },
       "clock_drift": {
-        "name": "Clock drift"
+        "name": "Clock offset"
       },
       "cumulative_runtime": {
-        "name": "Cumulative runtime"
+        "name": "Total pump time"
       },
       "on_count": {
-        "name": "On count"
+        "name": "Power-on count"
       },
       "pump_count": {
-        "name": "Pump count"
+        "name": "Pump cycle count"
       },
       "oil_level": {
         "name": "Oil level"
@@ -114,28 +114,31 @@
     },
     "number": {
       "work_duration": {
-        "name": "Work duration"
+        "name": "Default spray time"
       },
       "pause_duration": {
-        "name": "Pause duration"
+        "name": "Default pause time"
+      },
+      "bottle_capacity": {
+        "name": "Bottle capacity"
       }
     },
     "switch": {
       "schedule_enabled": {
-        "name": "Schedule enabled"
+        "name": "Automatic power"
       },
       "night_owl": {
-        "name": "Night Owl"
+        "name": "Night spraying after motion"
       }
     },
     "binary_sensor": {
       "scheduled_on": {
-        "name": "Scheduled on"
+        "name": "Spraying allowed"
       }
     },
     "button": {
       "oil_refill_keep_calibration": {
-        "name": "Refill"
+        "name": "Refilled to full"
       }
     }
   },
