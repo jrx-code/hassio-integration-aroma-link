@@ -51,8 +51,10 @@ AA | dir | flag | MAC(6B) | 00 | cmd | sub | 01 | 00 | payload... | XOR | EE
 | Schedule write | down | 57 | 15 | `len + 5×slot` | `AAAC00<MAC>0057152e...EE` | pcap 20:39:38 (workSet TEST) |
 | Query state/sched | down | 52 | 15 | `02 00 01 1F` | `AAAC00<MAC>0052150200011F0AEE` | pcap (poll) |
 | ACK komendy (nie stan) | up | 57 | 10/11 | `01 00 00` (zawsze 00) | `AACA01<MAC>00571101000071EE` | pcap + lokalnie 2026-11-01 |
+| Stan power | up | 53 | 10 | `01 00 val` | `AACA01<MAC>00531001000175EE` | pcap full-control (po power ON/OFF), 2 ramki |
 | Stan fan | up | 53 | 11 | `01 00 val` | `AACA01<MAC>00531101000174EE` | pcap (fan=1), lokalnie ON/OFF |
 | Dump harmonogramu | up | 52/53 | 15/2E | 5×slot | `AACA01<MAC>0052152E...EE` | pcap |
+| Zegar + aktywny program (odpowiedź) | up | 52 | 25 | `17 00 07EA 0A 1F 14 31 1B 06 00 01 01 00 0A 00 78 00 00 17 3B 01 00 00 00` | `AACA01<MAC>00522517...EE` | pcap full-control, 1 ramka; `07EA 0A 1F 14 31 1B` = 2026-10-31 20:49:27, zapytania z serwera w pcap brak |
 
 ### Slot harmonogramu (sub 0x15, dług. 0x2E=46 dla 5 slotów)
 

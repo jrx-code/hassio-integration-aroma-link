@@ -38,7 +38,7 @@ wall changes accordingly.
 |---|---|
 | **Auto-discovery** | One integration entry. Every diffuser that publishes on the broker becomes a device: topic id from the MQTT topic, MAC from the frame. Nothing to type in; new diffusers appear by themselves. |
 | **Entities** | `switch` **Power** (pump, scent output) and `switch` **Fan**, per diffuser. |
-| **State** | Fan state is read back from the device (pushed on every change). Power is optimistic, see [Limitations](#limitations-and-roadmap). |
+| **State** | Power and fan state are read back from the device (`53/10`, `53/11`, pushed after every command). |
 | **Polling** | Optional periodic state query per device, off by default. |
 | **Persistence** | Discovered devices are remembered across restarts and queried right after start, so entities do not sit `unavailable` waiting for the device to speak first. |
 | **Footprint** | Python standard library only, no extra requirements. Depends on the core `mqtt` integration. |
@@ -205,7 +205,7 @@ usually owns that port already. Two ways to meet the device:
   authenticated listener has to be bound to explicit addresses as well, one listener per address it
   serves (LAN IP, IoT IP, loopback). Rebinding disconnects its plaintext clients once; they
   reconnect on their own. If your broker runs in Docker **bridge** mode, publishing
-  `<that IP>:1883` to the container's listener port (for example `"10.0.40.29:1883:1893"`) achieves
+  `<that IP>:1883` to the container's listener port (for example `"192.0.2.29:1883:1893"`) achieves
   the same without touching listener binds (not tested by the author, whose EMQX uses host
   networking).
 
@@ -305,6 +305,7 @@ to the byte before it.
 | Schedule write (5 slots) | down | `57/15` | `2E 00 01` + 5 x 9 bytes: `startH startM endH endM flags work16 pause16` |
 | State / schedule query | down | `52/15` | `02 00 01 1F` |
 | Command acknowledged | up | `57/10`, `57/11` | `01 00 00` (always `00`: an ACK, not the state) |
+| Power state | up | `53/10` | `01 00 <01 or 00>` |
 | Fan state | up | `53/11` | `01 00 <01 or 00>` |
 | Schedule / status dump | up | `52/15`, `53/15` | `2E 00 01` + 5 slots |
 | Boot announce | up | `53/F1`, `53/06` | identity string (IMEI, firmware, model), short status |
@@ -314,8 +315,10 @@ minute (`17 3B` = 23:59); work and pause are big-endian seconds.
 
 ## Limitations and roadmap
 
-- **Power state is optimistic.** No dedicated power state frame was observed, so the switch assumes
-  the command worked. The fan has a real state frame.
+- **State only after commands and on boot.** The device reports power and fan state when it
+  acts on a command (`53/10`, `53/11`); the periodic query returns the schedule dump, not a power
+  or fan flag, so a change made on the device's own buttons shows up in Home Assistant only with
+  the next command or reboot.
 - **Schedule** read and write are implemented in the codec (`Slot`, `schedule_frame`,
   `parse_schedule`) but not exposed as entities yet.
 - **`/sys` telemetry** (firmware, module versions) is received but not parsed into sensors.
@@ -333,7 +336,7 @@ minute (`17 3B` = 23:59); work and pause are big-endian seconds.
 | Device connects, commands are PUBACKed, nothing happens | Envelope checksum or replayed msgid. Make sure you run 0.3.3 or newer. |
 | Device keeps reconnecting to the cloud | Resolver cache (flush it), a second resolver the device may use, or an override applied to one interface only. Confirm with a capture during power-up. |
 | Connection refused or resets | VLAN isolation (allow the flow), missing masquerade for a DNATed flow, or the DNS name points at a broker address in the device's own subnet (see the same-subnet trap). |
-| Fan switch flips back | The device's real state frame wins over the optimistic update: the command was dropped. See the checksum row. |
+| A switch flips back | The device's real state frame (`53/10`, `53/11`) wins over the optimistic update: the command was dropped. See the checksum row. |
 | After a router reboot the device is back in the cloud | The NAT or firewall rules were not persistent. |
 
 ## Development

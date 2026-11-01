@@ -119,16 +119,16 @@ def interpret_uplink(inner: bytes):
     """Map an uplink inner frame to a semantic event.
 
     Observed (captured from the real device):
+      0x53 / 0x10  -> actual POWER state in the last payload byte (01/00)
       0x53 / 0x11  -> actual FAN state in the last payload byte (01/00)
       0x57 / 10|11 -> command ACK (last byte 0x00, NOT the state) -> ('ack', sub)
       0x52|0x53 / 0x15 -> schedule/status dump -> ('schedule', [Slot,...])
-    Power STATE is not echoed as a dedicated 0x53/0x10 frame in the captures;
-    treat power optimistically on command and reconcile from the schedule/status
-    dump at cutover (TODO: confirm the on/off field in the 0x52 response live).
     """
     d = parse_inner(inner)
     if not d or d.direction != DIR_UP:
         return None
+    if d.cmd == CMD_STATE and d.sub == SUB_POWER:
+        return ("power", bool(d.payload[-1]))
     if d.cmd == CMD_STATE and d.sub == SUB_FAN:
         return ("fan", bool(d.payload[-1]))
     if d.cmd == CMD_CONTROL and d.sub in (SUB_POWER, SUB_FAN):

@@ -60,10 +60,11 @@ class AromaSwitch(SwitchEntity):
     async def async_added_to_hass(self):
         @callback
         def _on_uplink(ev):
-            if ev[0] == "fan" and self._sub == codec.SUB_FAN:
+            # 0x53/0x10 = power state, 0x53/0x11 = fan state (both real, from the device)
+            if (ev[0] == "power" and self._sub == codec.SUB_POWER) or \
+               (ev[0] == "fan" and self._sub == codec.SUB_FAN):
                 self._attr_is_on = ev[1]
                 self.async_write_ha_state()
-            # power has no dedicated state uplink -> optimistic
         self.async_on_remove(
             async_dispatcher_connect(self.hass, signal_uplink(self._dev.topic_id), _on_uplink))
 
