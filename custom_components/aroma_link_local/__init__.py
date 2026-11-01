@@ -16,6 +16,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.storage import Store
 
 from . import aroma_codec as codec
 from .const import (
@@ -54,10 +55,22 @@ class AromaHub:
         self._wildcard = o.get(CONF_UPLINK_WILDCARD, DEFAULT_UPLINK_WILDCARD)
         self._downlink = o.get(CONF_DOWNLINK_PATTERN, DEFAULT_DOWNLINK_PATTERN)
         self._query_interval = int(o.get(CONF_QUERY_INTERVAL, DEFAULT_QUERY_INTERVAL))
+        # Discovered devices persist across restarts (a Store, not entry.data, so
+        # saving does not fire the update listener and reload the entry).
+        self._store = Store(hass, 1, f"{DOMAIN}.devices")
 
     async def async_start(self, entry: ConfigEntry) -> None:
         entry.async_on_unload(
             await mqtt.async_subscribe(self.hass, self._wildcard, self._on_uplink, encoding=None))
+        # Restore devices seen before: without this, after a restart nothing is
+        # polled and nothing is discovered until the device happens to publish.
+        for topic_id, mac in ((await self._store.async_load()) or {}).items():
+            if topic_id not in self.devices:
+                dev = AromaDevice(topic_id=topic_id, mac=mac, downlink_pattern=self._downlink)
+                self.devices[topic_id] = dev
+                async_dispatcher_send(self.hass, SIGNAL_NEW_DEVICE, dev)
+        if self.devices:
+            self._poll(None)   # ask for state right away, do not wait an interval
         if self._query_interval > 0:
             entry.async_on_unload(async_track_time_interval(
                 self.hass, self._poll, timedelta(seconds=self._query_interval)))
@@ -85,6 +98,8 @@ class AromaHub:
             self.devices[topic_id] = dev
             _LOGGER.info("discovered Aroma-Link device %s (mac %s)", topic_id, dev.mac)
             async_dispatcher_send(self.hass, SIGNAL_NEW_DEVICE, dev)
+            self.hass.async_create_task(self._store.async_save(
+                {t: d.mac for t, d in self.devices.items()}))
         ev = codec.interpret_uplink(inner)
         if ev:
             async_dispatcher_send(self.hass, signal_uplink(topic_id), ev)

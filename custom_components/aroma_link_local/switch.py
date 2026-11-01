@@ -10,7 +10,8 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import DeviceInfo
 
-from . import AromaDevice, aroma_codec as codec
+from . import AromaDevice
+from . import aroma_codec as codec
 from .const import DOMAIN, SIGNAL_NEW_DEVICE, signal_uplink
 
 _LOGGER = logging.getLogger(__name__)

@@ -88,7 +88,7 @@ class Slot:
                 + self.work_sec.to_bytes(2, "big") + self.pause_sec.to_bytes(2, "big"))
 
     @classmethod
-    def from_wire(cls, s: bytes) -> "Slot":
+    def from_wire(cls, s: bytes) -> Slot:
         return cls(s[0], s[1], s[2], s[3], s[4] >> 4, bool(s[4] & 0x0F),
                    int.from_bytes(s[5:7], "big"), int.from_bytes(s[7:9], "big"))
 
