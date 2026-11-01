@@ -1,4 +1,4 @@
-"""Aroma-Link Pro300 wire codec (reverse-engineered — see docs/protocol.md).
+"""Aroma-Link Pro300 wire codec (reverse-engineered, see docs/protocol.md).
 
 Pure stdlib. Encodes/decodes both the MQTT transport envelope and the inner
 ASCII-hex frame. Checksum = XOR of every inner byte from AA(start) up to the

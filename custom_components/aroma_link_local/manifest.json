@@ -1,9 +1,9 @@
 {
   "domain": "aroma_link_local",
   "name": "Aroma-Link Local",
-  "version": "0.3.4",
-  "documentation": "https://github.com/jrx-code/aroma-link",
-  "issue_tracker": "https://github.com/jrx-code/aroma-link/issues",
+  "version": "0.3.5",
+  "documentation": "https://github.com/jrx-code/hassio-integration-aroma-link",
+  "issue_tracker": "https://github.com/jrx-code/hassio-integration-aroma-link/issues",
   "codeowners": [
     "@jrx-code"
   ],

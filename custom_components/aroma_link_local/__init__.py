@@ -1,4 +1,4 @@
-"""Aroma-Link Local — auto-discovering local control of ANY Aroma-Link device.
+"""Aroma-Link Local, auto-discovering local control of ANY Aroma-Link device.
 
 One config entry. Subscribes the MQTT uplink wildcard on the broker HA's MQTT
 integration uses (EMQX). Every device that publishes is discovered: the device

@@ -1,4 +1,4 @@
-# Aroma-Link Pro300 — protokół MQTT (reverse-engineered)
+# Aroma-Link Pro300: protokół MQTT (reverse-engineered)
 
 Zdekodowane z `captures/*.pcap` (tcpdump na UDM br40, pełne sterowanie z chmury
 2026-10-31). Transport: **MQTT, TCP/1883, bez TLS**.
@@ -9,8 +9,8 @@ Zdekodowane z `captures/*.pcap` (tcpdump na UDM br40, pełne sterowanie z chmury
 q/1/d/qdpu118T<mac>/bus   downlink  server -> device   (komendy)
 q/2/d/qdpu118T<mac>/bus   uplink    device -> server   (stan / ACK)
 ```
-`<mac>` = MAC bez dwukropków, lowercase. Tu: `aabbccddeeff`. Prefiks `qdpu118T` zaobserwowany;
-do potwierdzenia przy CONNECT po przekierowaniu (może być polem konfiguracyjnym).
+`<mac>` = MAC bez dwukropków, lowercase. Tu: `aabbccddeeff`. Prefiks `qdpu118T` potwierdzony
+przy CONNECT (clientid = topic-id, patrz niżej).
 
 ## Koperta transportowa (payload MQTT)
 
@@ -35,7 +35,7 @@ AA | dir | flag | MAC(6B) | 00 | cmd | sub | 01 | 00 | payload... | XOR | EE
 - `AA` start, `EE` koniec.
 - `dir`: `AC` = downlink (komenda), `CA` = uplink (odpowiedź/stan).
 - `flag`: `00` downlink, `01` uplink.
-- `MAC(6B)`: `B4 2F 03 9A 4B 1E`.
+- `MAC(6B)`: `AA BB CC DD EE FF`.
 - `cmd`: `0x57` = control (zapis), `0x52` = query (odczyt).
 - `sub`: podkomenda (patrz tabela).
 - `XOR` = **XOR wszystkich bajtów od `AA`(start) do bajtu tuż przed XOR** (potwierdzone na 7 próbkach, algorytm w `bridge/aroma_codec.py`).
@@ -50,8 +50,8 @@ AA | dir | flag | MAC(6B) | 00 | cmd | sub | 01 | 00 | payload... | XOR | EE
 | Fan OFF | down | 57 | 11 | `01 00 00` | `AAAC00<MAC>00571101000016EE` | pcap 20:39:09 |
 | Schedule write | down | 57 | 15 | `len + 5×slot` | `AAAC00<MAC>0057152e...EE` | pcap 20:39:38 (workSet TEST) |
 | Query state/sched | down | 52 | 15 | `02 00 01 1F` | `AAAC00<MAC>0052150200011F0AEE` | pcap (poll) |
-| Stan power (echo) | up | 57 | 10/11 | wartość | `AACA01<MAC>0057xx01000..EE` | pcap |
-| Stan fan (echo) | up | 53 | 11 | `01 00 val` | `AACA01<MAC>00531101000174EE` | pcap (fan=1) |
+| ACK komendy (nie stan) | up | 57 | 10/11 | `01 00 00` (zawsze 00) | `AACA01<MAC>00571101000071EE` | pcap + lokalnie 2026-11-01 |
+| Stan fan | up | 53 | 11 | `01 00 val` | `AACA01<MAC>00531101000174EE` | pcap (fan=1), lokalnie ON/OFF |
 | Dump harmonogramu | up | 52/53 | 15/2E | 5×slot | `AACA01<MAC>0052152E...EE` | pcap |
 
 ### Slot harmonogramu (sub 0x15, dług. 0x2E=46 dla 5 slotów)
@@ -87,13 +87,13 @@ użyć **listenera EMQX bez authn** dla tego urządzenia (ACL dalej ogranicza to
 
 ## Topici uplinku
 
-- `q/2/d/<id>/bus` — stan/komendy (ramki AA..EE jak wyżej).
-- `q/2/d/<id>/sys` — telemetria tekstowa (nie format AA..EE): app 1.0.5, MCU, wersje modułów,
+- `q/2/d/<id>/bus`, stan/komendy (ramki AA..EE jak wyżej).
+- `q/2/d/<id>/sys`, telemetria tekstowa (nie format AA..EE): app 1.0.5, MCU, wersje modułów,
   `AUTO;LBS;WIFI`. Integracja łapie oba (`q/2/d/+/+`), /sys na razie ignoruje.
 
 ## Ramki startowe (boot announce)
 
-- `53/F1` — tożsamość: ASCII z `virtualImei=<imei-redacted>`, `V1.0.20250416`, `A6/Pro300_2_SEG`.
-- `53/06` — krótki status po starcie (wartość 00).
+- `53/F1`, tożsamość: ASCII z `virtualImei=<imei-redacted>`, `V1.0.20250416`, `A6/Pro300_2_SEG`.
+- `53/06`, krótki status po starcie (wartość 00).
 
 Brak NTP (UDP 123) w oknie power-cycle; źródło czasu dla harmonogramu niepotwierdzone.
