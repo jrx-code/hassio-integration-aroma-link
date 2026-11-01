@@ -15,12 +15,15 @@ do potwierdzenia przy CONNECT po przekierowaniu (może być polem konfiguracyjny
 ## Koperta transportowa (payload MQTT)
 
 ```
-AA AA | len16 | seq8 | msgid16 | tag16 | <INNER-ASCII-HEX>
+AA AA | len16 | cksum8 | msgid16 | tag16 | <INNER-ASCII-HEX>
 ```
 - `AA AA` stałe.
-- `len16` = liczba bajtów PO tym polu (seq+msgid+tag+inner).
-- `seq8` = licznik serwera, inkrementuje per wiadomość (urządzenie wygląda na tolerancyjne — zweryfikować).
-- `msgid16` = licznik wiadomości, inkrementuje.
+- `len16` = liczba bajtów PO tym polu (cksum+msgid+tag+inner).
+- `cksum8` = **suma kontrolna**: `(suma bajtów msgid16 + tag16 + ASCII-hex) & 0xFF`. Potwierdzona na
+  28/28 ramkach chmury (2026-11-01). Wcześniej błędnie opisana jako licznik `seq`; ramka ze złą sumą
+  jest PUBACK-owana przez stos MQTT urządzenia, ale odrzucana aplikacyjnie (bez odpowiedzi).
+- `msgid16` = licznik wiadomości, inkrementuje. Powtórzenie już widzianego msgid (replay) jest
+  ignorowane, więc lokalny nadawca musi startować wysoko i rosnąć monotonicznie.
 - `tag16` = **0x0023 dla downlink, 0x0024 dla uplink** (stałe).
 - `INNER-ASCII-HEX` = ramka właściwa jako tekst heks (patrz niżej).
 

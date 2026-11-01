@@ -163,22 +163,42 @@ def parse_inner(frame: bytes) -> Decoded | None:
 
 # ---------- MQTT transport envelope ----------
 
-class Envelope:
-    """Builds the AA AA | len | seq | msgid | tag | <ascii-hex> payloads."""
+def envelope_checksum(msgid: int, tag: int, ascii_hex: bytes) -> int:
+    """8-bit additive checksum over msgid(2) + tag(2) + ASCII-hex payload.
 
-    def __init__(self) -> None:
-        self._seq = 0
-        self._msgid = 0
+    Verified against 28/28 captured cloud frames. The byte after the length
+    field is THIS checksum, not a sequence counter; a frame with a wrong value
+    is PUBACKed by the device's MQTT stack but silently dropped by its
+    application layer.
+    """
+    return (sum(msgid.to_bytes(2, "big")) + sum(tag.to_bytes(2, "big")) + sum(ascii_hex)) & 0xFF
+
+
+class Envelope:
+    """Builds AA AA | len16 | cksum8 | msgid16 | tag16 | <ascii-hex> payloads.
+
+    msgid must not repeat a value the device has already seen (replay is
+    dropped), so it starts high and increases monotonically.
+    """
+
+    def __init__(self, start_msgid: int = 0x1000) -> None:
+        self._msgid = start_msgid & 0xFFFF
 
     def wrap(self, inner: bytes, tag: int = TAG_DOWN) -> bytes:
-        self._seq = (self._seq + 1) & 0xFF
         self._msgid = (self._msgid + 1) & 0xFFFF
         ascii_hex = inner.hex().upper().encode("ascii")
-        rest = (bytes([self._seq])
-                + self._msgid.to_bytes(2, "big")
-                + tag.to_bytes(2, "big")
-                + ascii_hex)
+        body = self._msgid.to_bytes(2, "big") + tag.to_bytes(2, "big") + ascii_hex
+        rest = bytes([envelope_checksum(self._msgid, tag, ascii_hex)]) + body
         return bytes([START, START]) + len(rest).to_bytes(2, "big") + rest
+
+
+def verify_envelope(payload: bytes) -> bool:
+    """True when an AA AA envelope carries a valid checksum byte."""
+    if len(payload) < 9 or payload[:2] != bytes([START, START]):
+        return False
+    msgid = int.from_bytes(payload[5:7], "big")
+    tag = int.from_bytes(payload[7:9], "big")
+    return payload[4] == envelope_checksum(msgid, tag, payload[9:])
 
 
 def unwrap(payload: bytes) -> bytes | None:
