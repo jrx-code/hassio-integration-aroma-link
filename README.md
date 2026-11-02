@@ -38,6 +38,8 @@ wall changes accordingly.
 
 ![Entities and services](https://raw.githubusercontent.com/jrx-code/hassio-integration-aroma-link/main/docs/images/entities.png)
 
+![Device page of a Pro300 (Polish UI, MAC address masked)](https://raw.githubusercontent.com/jrx-code/hassio-integration-aroma-link/main/docs/images/device-page.png)
+
 Everything the cloud integration offered, now local (one design difference: the diffuser keeps a
 single set of 5 schedule slots, so Home Assistant owns the weekly schedule and writes the current
 day's slots at midnight).
@@ -368,3 +370,4 @@ test harness. Hassfest and HACS validation run on every push (`.github/workflows
 
 MIT License. Not affiliated with Aroma-Link, DeWoo or Crearoma. Use at your own risk: redirecting
 the device takes it off the vendor cloud until you undo the DNS change.
+
