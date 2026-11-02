@@ -5,6 +5,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![Home Assistant 2024.1+](https://img.shields.io/badge/Home%20Assistant-2024.1%2B-blue)
 
+![Aroma-Link Local](https://raw.githubusercontent.com/jrx-code/hassio-integration-aroma-link/main/docs/images/hero.png)
+
 Local, cloud-free Home Assistant integration for **Aroma-Link / DeWoo / Crearoma** WiFi scent
 diffusers. Verified on the **Pro300** (firmware `V1.0.20250416`, hardware `A6/Pro300_2_SEG`).
 
@@ -34,6 +36,8 @@ wall changes accordingly.
 
 ## Features
 
+![Entities and services](https://raw.githubusercontent.com/jrx-code/hassio-integration-aroma-link/main/docs/images/entities.png)
+
 Everything the cloud integration offered, now local (one design difference: the diffuser keeps a
 single set of 5 schedule slots, so Home Assistant owns the weekly schedule and writes the current
 day's slots at midnight).
@@ -62,15 +66,7 @@ day's slots at midnight).
 
 ## How it works
 
-```
-                        DNS: iot-south.landecia.com -> <your broker IP>
-
- +------------------+   MQTT 3.1.1, TCP 1883, no TLS   +------------------+   HA MQTT integration   +-------------------+
- |  Aroma-Link      | -------------------------------> |   your broker    | <---------------------> |  Home Assistant   |
- |  diffuser (WiFi) |   PUB  q/2/d/<id>/bus, /sys      |  EMQX, Mosquitto |   SUB  q/2/d/+/+        |  aroma_link_local |
- |                  |   SUB  q/1/d/<id>/+              |                  |   PUB  q/1/d/<id>/bus   |                   |
- +------------------+                                  +------------------+                         +-------------------+
-```
+![Architecture: diffuser, broker, Home Assistant](https://raw.githubusercontent.com/jrx-code/hassio-integration-aroma-link/main/docs/images/architecture.png)
 
 | Topic | Direction | Content |
 |---|---|---|
@@ -227,6 +223,8 @@ usually owns that port already. Two ways to meet the device:
 Pick A when you would rather not touch a working broker, B when you want the router out of the
 picture. Step 3 describes A in full; for B only its DNS item applies.
 
+![Topology A and B](https://raw.githubusercontent.com/jrx-code/hassio-integration-aroma-link/main/docs/images/topology.png)
+
 ### 3. DNS override and routing
 
 1. **DNS.** On the resolver the diffuser uses (usually the router), add a static record
@@ -290,6 +288,8 @@ While the redirect is active the vendor app shows the device offline. This integ
 talk to the cloud at all, so there is no "both at once" mode.
 
 ## Protocol in short
+
+![Frame format](https://raw.githubusercontent.com/jrx-code/hassio-integration-aroma-link/main/docs/images/frame-format.png)
 
 MQTT payload, a binary envelope around an ASCII-hex frame:
 
