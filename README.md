@@ -59,6 +59,10 @@ day's slots at midnight).
 | **Persistence** | Devices, schedule, flags, timed run, counters and oil state survive restarts. |
 | **Footprint** | Python standard library only. Depends on the core `mqtt` integration. |
 
+The schedule card on a live Pro300 (MAC address masked):
+
+![Schedule card](https://raw.githubusercontent.com/jrx-code/hassio-integration-aroma-link/main/docs/images/schedule-card.png)
+
 ### Notes on the data
 
 - Counters and oil are **estimates**. The device reports no counters; they are derived from the power flag and work phase in the status report, split by the active slot's work/pause durations. Calibrate the oil with `oil_calibrate` (start, run, end, set `measured_remaining`, finalize) or give a rate.
