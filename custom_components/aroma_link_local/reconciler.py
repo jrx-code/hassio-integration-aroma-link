@@ -9,17 +9,19 @@ from __future__ import annotations
 import logging
 import time as _time
 from dataclasses import replace
+from datetime import timedelta
 
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
 from . import aroma_codec as codec
 from .model import NIGHT_OWL_SLOT_INDEX, today
-from .schedule import compile_day
+from .schedule import compile_day_for_device, offset_minutes
 
 _LOGGER = logging.getLogger(__name__)
 MAX_WRITES = 3
 WINDOW_SEC = 300
+OFFSET_HYSTERESIS_SEC = 90     # the clock reading jitters by a second or two; follow real moves only
 VERIFY_DELAY = 3
 
 
@@ -30,6 +32,16 @@ class Reconciler:
         self.gated_off = False                      # schedule-flip gating (gating engine)
         self._writes: list[float] = []
         self.error: str | None = None
+        self._offset: int | None = None             # minutes the device clock is ahead, None = not measured yet
+
+    @property
+    def offset_min(self) -> int | None:
+        """Device clock minus real time in whole minutes, steady against measurement jitter."""
+        drift = self._dev.clock_drift()
+        if drift is not None and (self._offset is None
+                                  or abs(drift - self._offset * 60) > OFFSET_HYSTERESIS_SEC):
+            self._offset = offset_minutes(drift)
+        return self._offset
 
     def desired(self) -> list[codec.Slot]:
         model = self._hub.models.get(self._dev.topic_id)
@@ -41,7 +53,13 @@ class Reconciler:
             if self.overlay is not None:
                 slots[NIGHT_OWL_SLOT_INDEX] = self.overlay
             return slots
-        return compile_day(model, today(dt_util.now()), self.overlay, self.gated_off)
+        offset = self.offset_min or 0
+        device_day = today(dt_util.now() + timedelta(minutes=offset))
+        return compile_day_for_device(model, device_day, offset, self.overlay, self.gated_off)
+
+    def managed_from_model(self) -> bool:
+        """True when slots are compiled from the saved schedule (not copied from the device)."""
+        return self._hub.models.get(self._dev.topic_id).schedule.version > 0
 
     def managed(self) -> bool:
         """Only a device with a schedule saved from HA is written; fresh installs leave it alone."""
@@ -54,6 +72,8 @@ class Reconciler:
         if not self._dev.slots and not force:
             await self._hub.async_send(self._dev, codec.query_frame(self._dev.mac))   # learn first
             return False
+        if self.offset_min is None and not force and self.managed_from_model():
+            return False                                # wait for the first status report: the offset shifts every slot
         desired = self.desired()
         if self._dev.slots == desired:
             return False

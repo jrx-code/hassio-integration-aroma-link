@@ -104,7 +104,7 @@ def async_register_services(hass: HomeAssistant) -> None:
         if not dev.slots:
             raise vol.Invalid("no schedule dump from the device yet")
         model = hub.models.get(dev.topic_id)
-        schedule = schedule_from_slots(dev.slots)
+        schedule = schedule_from_slots(dev.slots, hub.reconciler(dev).offset_min or 0)
         schedule.version = model.schedule.version + 1
         schedule.updated_at = dt_util.utcnow().isoformat()
         model.schedule = schedule

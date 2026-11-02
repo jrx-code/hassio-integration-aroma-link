@@ -153,6 +153,87 @@ def compile_day(model: DeviceModel, day: Weekday, overlay: Slot | None = None,
     return slots
 
 
+MAX_OFFSET_MIN = 120      # a bigger clock difference is a broken report, not a clock to follow
+_LAST_MINUTE = 23 * 60 + 59
+
+
+def offset_minutes(drift_sec: float | None) -> int:
+    """Whole minutes the device clock is ahead of real time (negative = behind)."""
+    if drift_sec is None:
+        return 0
+    minutes = round(drift_sec / 60)
+    return minutes if abs(minutes) <= MAX_OFFSET_MIN else 0
+
+
+def _minutes(hh: int, mm: int) -> int:
+    return hh * 60 + mm
+
+
+def _shift_windows(model: DeviceModel, device_day: Weekday, offset_min: int) -> list[Slot]:
+    """Windows to put in slots 1-4 when the device clock is ``offset_min`` ahead of real time.
+
+    A real window [s, e] shows up as [s + offset, e + offset] on the device clock. The device
+    day does not start at real midnight, so the tail of one real day can land on the next device
+    day (and with a negative offset the head of the next real day on the previous one): the
+    neighbouring real days are shifted into this device day and clipped to it.
+    """
+    pieces: list[Slot] = []
+    for k, real_day in ((-1, device_day.prev), (0, device_day), (1, device_day.next)):
+        for w in model.schedule.days[real_day].windows[:MAX_WINDOWS]:
+            if k != 0 and not w.enabled:
+                continue
+            start = _minutes_of(w.start) + offset_min + 1440 * k
+            end = _minutes_of(w.end) + offset_min + 1440 * k
+            start, end = max(start, 0), min(end, _LAST_MINUTE)
+            if end <= start:
+                continue
+            pieces.append(Slot(start // 60, start % 60, end // 60, end % 60,
+                               w.level, w.enabled, w.work_sec, w.pause_sec))
+    pieces.sort(key=lambda s: (s.start_h, s.start_m))
+    merged: list[Slot] = []
+    for s in pieces:
+        prev = merged[-1] if merged else None
+        if (prev is not None and prev.enabled == s.enabled and prev.level == s.level
+                and prev.work_sec == s.work_sec and prev.pause_sec == s.pause_sec
+                and _minutes(s.start_h, s.start_m) <= _minutes(prev.end_h, prev.end_m) + 1):
+            end_h, end_m = max((prev.end_h, prev.end_m), (s.end_h, s.end_m))
+            merged[-1] = replace(prev, end_h=end_h, end_m=end_m)
+        else:
+            merged.append(s)
+    return merged[:MAX_WINDOWS]
+
+
+def _minutes_of(hhmm: str) -> int:
+    t = parse_hhmm(hhmm)
+    return t.hour * 60 + t.minute
+
+
+def compile_day_for_device(model: DeviceModel, device_day: Weekday, offset_min: int,
+                           overlay: Slot | None = None, gated_off: bool = False) -> list[Slot]:
+    """Like ``compile_day`` but in the device's own clock, ``offset_min`` ahead of real time.
+
+    ``device_day`` is the weekday the device clock shows now. With a zero offset the result is
+    identical to ``compile_day``.
+    """
+    if offset_min == 0:
+        return compile_day(model, device_day, overlay, gated_off)
+    windows = _shift_windows(model, device_day, offset_min)
+    slots = windows + [FILLER] * (MAX_WINDOWS - len(windows))
+    owl = night_owl_slot(model, device_day)
+    cfg = model.night_owl
+    if cfg.mode == "fixed" and not _fixed_crosses_midnight(cfg):
+        start = max(_minutes_of(cfg.fixed_start) + offset_min, 0)
+        end = min(_minutes_of(cfg.fixed_end) + offset_min, _LAST_MINUTE)
+        if end > start:
+            owl = replace(owl, start_h=start // 60, start_m=start % 60, end_h=end // 60, end_m=end % 60)
+    slots.append(owl)
+    if gated_off:
+        slots = [replace(s, enabled=False) for s in slots]
+    if overlay is not None:
+        slots[NIGHT_OWL_SLOT_INDEX] = overlay
+    return slots
+
+
 def active_window(model: DeviceModel, now: datetime):
     """(day, index, window) when ``now`` is inside an enabled window, else None."""
     day = today(now)
@@ -162,14 +243,22 @@ def active_window(model: DeviceModel, now: datetime):
     return None
 
 
-def schedule_from_slots(slots: list[Slot]) -> WeeklySchedule:
+def schedule_from_slots(slots: list[Slot], offset_min: int = 0) -> WeeklySchedule:
     """Use the device's slots 1-4 as the window set of every weekday (import).
 
     Unused slots (the filler, or zero-length windows such as 00:00-00:00 that the cloud left
-    enabled) are skipped so the imported model validates.
+    enabled) are skipped so the imported model validates. The slots are in the device's clock,
+    ``offset_min`` ahead of real time, so they are shifted back and clipped to the day.
     """
-    windows = [slot_to_window(s) for s in slots[:MAX_WINDOWS]
-               if s != FILLER and (s.start_h, s.start_m) < (s.end_h, s.end_m)]
+    windows = []
+    for s in slots[:MAX_WINDOWS]:
+        if s == FILLER or (s.start_h, s.start_m) >= (s.end_h, s.end_m):
+            continue
+        start = max(_minutes(s.start_h, s.start_m) - offset_min, 0)
+        end = min(_minutes(s.end_h, s.end_m) - offset_min, _LAST_MINUTE)
+        if end > start:
+            windows.append(slot_to_window(replace(s, start_h=start // 60, start_m=start % 60,
+                                                  end_h=end // 60, end_m=end % 60)))
     sched = WeeklySchedule()
     for day in Weekday:
         sched.days[day].windows = list(windows)

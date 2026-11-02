@@ -66,6 +66,13 @@ class AromaDevice:
     status: dict = field(default_factory=dict)      # last 52/25 report (not persisted)
     status_at: datetime | None = None
 
+    def clock_drift(self) -> float | None:
+        """Seconds the device clock is ahead of HA at its last report (it reports local time)."""
+        if not self.status or self.status_at is None:
+            return None
+        clock = self.status["clock"].replace(tzinfo=dt_util.get_default_time_zone())
+        return (clock - self.status_at).total_seconds()
+
     @property
     def t_down(self) -> str:
         return self.downlink_pattern.format(id=self.topic_id)
