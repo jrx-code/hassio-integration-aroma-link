@@ -46,13 +46,13 @@ day's slots at midnight).
 |---|---|
 | **Auto-discovery** | One integration entry. Every diffuser that publishes on the broker becomes a device. |
 | **Control** | `Power` and `Fan` switches, state read back from the device. Changes made on the device show up within the poll interval. |
-| **Status** | `Work status` (off / diffusing / paused), `Work remaining`, `Pause remaining`, `Device clock`, `Clock drift`, `Last update`, `Firmware version` (with model and module telemetry). |
-| **Weekly schedule** | Up to 4 windows per weekday, level 1-3, work/pause seconds; written to the device and verified, drift repaired. Switch `Schedule enabled`, services `set_schedule`, `import_schedule`, `sync_schedules`. |
-| **Night Owl** | Low-intensity run outside the windows (slot 5), per-day permission, fixed or outside-windows mode, motion-gated. Switch `Night Owl`, service `set_night_owl`. |
+| **Status** | `Cycle state` (off / diffusing / paused), `Spray time left`, `Pause time left`, `Device time`, `Clock offset`, `Last reading`, `Software version` (with model and module telemetry). |
+| **Weekly schedule** | Up to 4 windows per weekday, level 1-3, work/pause seconds; written to the device and verified, drift repaired. Switch `Automatic power`, services `set_schedule`, `import_schedule`, `sync_schedules`. |
+| **Night Owl** | Low-intensity run outside the windows (slot 5), per-day permission, fixed or outside-windows mode, motion-gated. Switch `Night spraying after motion`, service `set_night_owl`. |
 | **Timed run** | `start_timed_run` / `cancel_timed_run`, survives restarts, overlay in slot 5, hands power back at the end. |
 | **Gating** | Optional HVAC, occupancy and motion gates with delays, per device, in the integration options. Two modes: schedule flip (default, no power beeps) and power switching. |
-| **Usage and oil** | `Cumulative runtime`, `On count`, `Pump count` (estimated from power and work phase), `Oil level`, `Oil remaining`, `Refill` button, services `oil_refill`, `oil_calibrate`. |
-| **Diagnostics** | `Scheduled on`, service `send_frame`, `aroma_link_local_frame` events. |
+| **Usage and oil** | `Total pump time`, `Power-on count`, `Pump cycle count` (estimated from power and work phase), `Oil level`, `Oil remaining`, `Refilled to full` button, services `oil_refill`, `oil_calibrate`. |
+| **Diagnostics** | `Spraying allowed`, service `send_frame`, `aroma_link_local_frame` events. |
 | **Schedule card** | The cjam28 schedule card ships with the integration and loads by itself: `type: custom:aroma-link-schedule-card`. |
 | **Persistence** | Devices, schedule, flags, timed run, counters and oil state survive restarts. |
 | **Footprint** | Python standard library only. Depends on the core `mqtt` integration. |
@@ -62,7 +62,7 @@ day's slots at midnight).
 - Counters and oil are **estimates**. The device reports no counters; they are derived from the power flag and work phase in the status report, split by the active slot's work/pause durations. Calibrate the oil with `oil_calibrate` (start, run, end, set `measured_remaining`, finalize) or give a rate.
 - The schedule and gating are inert until a schedule was saved from Home Assistant (`set_schedule`, the card, or `import_schedule` to adopt what the device holds). A fresh install never overwrites the device or fights manual use.
 - Signal strength (RSSI) is not available locally; it was not found in the telemetry. See `docs/protocol.md`.
-- The device clock is local time and has no known way to be set. It can be minutes off (one unit measured +12 min, constant for hours), and windows run on that clock. `Clock drift` shows the difference and the integration compensates: windows are written shifted by the measured whole minutes, split across the device's midnight, and imported slots are shifted back. Your windows always mean real time.
+- The device clock is local time and has no known way to be set. It can be minutes off (one unit measured +12 min, constant for hours), and windows run on that clock. `Clock offset` shows the difference and the integration compensates: windows are written shifted by the measured whole minutes, split across the device's midnight, and imported slots are shifted back. Your windows always mean real time.
 
 ## How it works
 
