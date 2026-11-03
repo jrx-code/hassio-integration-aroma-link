@@ -10,6 +10,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from .const import DOMAIN, SIGNAL_NEW_DEVICE
 from .entity import AromaEntity
 from .model import PAUSE_SEC_MAX, PAUSE_SEC_MIN, WORK_SEC_MAX, WORK_SEC_MIN
+from .usage import set_capacity
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
@@ -81,7 +82,7 @@ class BottleCapacity(AromaEntity, NumberEntity):
 
     async def async_set_native_value(self, value: float) -> None:
         oil = self._hub.oil(self._dev)
-        oil.bottle_capacity = float(value)
+        set_capacity(oil, value)
         self._hub.save_usage(self._dev, oil=oil)
 
     @callback

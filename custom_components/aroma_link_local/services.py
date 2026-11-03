@@ -11,7 +11,7 @@ from . import aroma_codec as codec
 from .const import DOMAIN
 from .model import NightOwlSettings, WeeklySchedule, is_hhmm
 from .schedule import schedule_from_slots, validate_schedule
-from .usage import SETTABLE, calibrate, refill
+from .usage import SETTABLE, calibrate, refill, set_capacity
 
 DEVICE = {vol.Optional("device_id"): cv.string}
 SYNC_SCHEMA = vol.Schema(DEVICE)
@@ -142,6 +142,7 @@ def async_register_services(hass: HomeAssistant) -> None:
         for key in SETTABLE:
             if key in call.data:
                 setattr(oil, key, call.data[key])
+        set_capacity(oil, oil.bottle_capacity)
         problem = calibrate(oil, usage, call.data["action"], dt_util.utcnow().isoformat())
         hub.save_usage(dev, usage=usage, oil=oil)
         if problem:

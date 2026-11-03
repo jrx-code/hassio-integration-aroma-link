@@ -37,6 +37,7 @@ def oil_payload(oil, level, remaining, days, work_since_fill: float) -> dict:
             "days_remaining": None if days is None else round(days, 1),
             "usage_rate_ml_per_hour": round(oil.usage_rate * 3600, 4) if oil.usage_rate else None,
             "calibrated": oil.usage_rate is not None, "calibration_state": oil.calibration_state,
+            "rate_source": "calibrated" if oil.usage_rate else "default",
             "fill_date": oil.fill_date, "bottle_capacity_ml": oil.bottle_capacity,
             "fill_volume_ml": oil.fill_volume, "runtime_since_fill_hours": round(work_since_fill / 3600, 2)}
 

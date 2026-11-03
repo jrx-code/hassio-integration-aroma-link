@@ -20,7 +20,13 @@ from .const import DOMAIN, SIGNAL_NEW_DEVICE
 from .entity import AromaEntity
 from .model import today
 from .schedule import scheduled_work_seconds_per_day
-from .usage import days_remaining, level_percent, remaining_ml
+from .usage import (
+    days_remaining,
+    effective_rate,
+    level_percent,
+    rate_source,
+    remaining_ml,
+)
 
 WORK_STATES = ["off", "diffusing", "paused", "idle"]
 
@@ -222,7 +228,7 @@ class UsageSensor(AromaEntity, SensorEntity):
 
 
 class OilSensor(AromaEntity, SensorEntity):
-    """Oil level (%) and remaining volume (ml), from the calibrated usage rate."""
+    """Oil level (%) and remaining volume (ml): calibrated usage rate, else the nominal default."""
 
     _attr_state_class = SensorStateClass.MEASUREMENT
 
@@ -247,6 +253,7 @@ class OilSensor(AromaEntity, SensorEntity):
             "calibration_method": oil.calibration_method, "bottle_capacity_ml": oil.bottle_capacity,
             "fill_volume_ml": oil.fill_volume, "fill_date": oil.fill_date,
             "usage_rate_ml_per_hour": round(oil.usage_rate * 3600, 4) if oil.usage_rate else None,
+            "rate_source": rate_source(oil), "estimate_rate_ml_per_hour": round(effective_rate(oil) * 3600, 4),
             "work_hours_since_fill": round(u.work_since_fill / 3600, 3),
             "estimated_days_remaining_schedule": None if days is None else round(days, 1),
             "recent_events": oil.events[-5:],

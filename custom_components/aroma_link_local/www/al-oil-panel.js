@@ -116,6 +116,9 @@ class AlOilPanel extends LitElement {
                 ${oil.usage_rate_ml_per_hour
                   ? html`· ${Number(oil.usage_rate_ml_per_hour).toFixed(2)} ml/h`
                   : nothing}
+                ${oil.rate_source === "default"
+                  ? html`· estimated at 1.5 ml/h until calibrated`
+                  : nothing}
                 ${oil.remaining_ml != null
                   ? html`· ${Math.round(oil.remaining_ml)} ml left`
                   : nothing}

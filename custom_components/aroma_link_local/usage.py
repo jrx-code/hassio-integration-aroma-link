@@ -12,6 +12,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 MAX_GAP = 300.0          # seconds; longer gaps (HA down, device offline) are not counted
+# Until calibrated, the level is estimated at a nominal nebulizer rate: no Pro300 figure is
+# published; AromaPro nebulizers state 1-2 ml per hour of continuous spray (FCC filing).
+DEFAULT_RATE = 1.5 / 3600.0   # ml per second of pump work
 
 
 @dataclass
@@ -98,24 +101,35 @@ def log_event(oil: Oil, kind: str, detail: str, now_iso: str) -> None:
     oil.events = (oil.events + [[now_iso, kind, detail]])[-20:]
 
 
-def remaining_ml(oil: Oil, work_since_fill: float) -> float | None:
-    if oil.usage_rate is None:
-        return None
-    return max(0.0, oil.fill_volume - oil.usage_rate * work_since_fill)
+def effective_rate(oil: Oil) -> float:
+    """Calibrated ml per work second, else the nominal DEFAULT_RATE."""
+    return oil.usage_rate if oil.usage_rate else DEFAULT_RATE
+
+
+def rate_source(oil: Oil) -> str:
+    return "calibrated" if oil.usage_rate else "default"
+
+
+def set_capacity(oil: Oil, capacity: float) -> None:
+    """New bottle size; the fill volume can never exceed the bottle."""
+    oil.bottle_capacity = float(capacity)
+    oil.fill_volume = min(oil.fill_volume, oil.bottle_capacity)
+
+
+def remaining_ml(oil: Oil, work_since_fill: float) -> float:
+    return max(0.0, min(oil.fill_volume, oil.bottle_capacity) - effective_rate(oil) * work_since_fill)
 
 
 def level_percent(oil: Oil, work_since_fill: float) -> float | None:
-    rem = remaining_ml(oil, work_since_fill)
-    if rem is None or oil.bottle_capacity <= 0:
+    if oil.bottle_capacity <= 0:
         return None
-    return min(100.0, rem / oil.bottle_capacity * 100.0)
+    return min(100.0, remaining_ml(oil, work_since_fill) / oil.bottle_capacity * 100.0)
 
 
 def days_remaining(oil: Oil, work_since_fill: float, work_seconds_per_day: float) -> float | None:
-    rem = remaining_ml(oil, work_since_fill)
-    if rem is None or not oil.usage_rate or work_seconds_per_day <= 0:
+    if work_seconds_per_day <= 0:
         return None
-    return rem / (oil.usage_rate * work_seconds_per_day)
+    return remaining_ml(oil, work_since_fill) / (effective_rate(oil) * work_seconds_per_day)
 
 
 def refill(oil: Oil, usage: Usage, now_iso: str, keep_calibration: bool = True,
