@@ -16,7 +16,7 @@ from homeassistant.util import dt as dt_util
 
 from . import aroma_codec as codec
 from .model import NIGHT_OWL_SLOT_INDEX, today
-from .schedule import compile_day_for_device, offset_minutes
+from .schedule import compile_day_for_device, day_drift, offset_minutes
 
 _LOGGER = logging.getLogger(__name__)
 MAX_WRITES = 3
@@ -40,7 +40,7 @@ class Reconciler:
         """Device clock minus real time in whole minutes, steady against measurement jitter."""
         drift = self._dev.clock_drift()
         if drift is not None and (self._offset is None
-                                  or abs(drift - self._offset * 60) > OFFSET_HYSTERESIS_SEC):
+                                  or abs(day_drift(drift) - self._offset * 60) > OFFSET_HYSTERESIS_SEC):
             self._offset = offset_minutes(drift)
         return self._offset
 

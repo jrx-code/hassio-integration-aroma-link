@@ -153,16 +153,24 @@ def compile_day(model: DeviceModel, day: Weekday, overlay: Slot | None = None,
     return slots
 
 
-MAX_OFFSET_MIN = 120      # a bigger clock difference is a broken report, not a clock to follow
 _LAST_MINUTE = 23 * 60 + 59
+_DAY_SEC = 86400
+
+
+def day_drift(drift_sec: float) -> float:
+    """Clock difference reduced to the time of day, in [-12 h, 12 h).
+
+    Slots carry only hours and minutes, so a clock that is days or years off (a device the cloud
+    never set, e.g. 2021-05-27 on a new Pro300) matters only by its time-of-day difference.
+    """
+    return (drift_sec + _DAY_SEC / 2) % _DAY_SEC - _DAY_SEC / 2
 
 
 def offset_minutes(drift_sec: float | None) -> int:
-    """Whole minutes the device clock is ahead of real time (negative = behind)."""
+    """Whole minutes the device clock is ahead of real time in the day (negative = behind)."""
     if drift_sec is None:
         return 0
-    minutes = round(drift_sec / 60)
-    return minutes if abs(minutes) <= MAX_OFFSET_MIN else 0
+    return round(day_drift(drift_sec) / 60)
 
 
 def _minutes(hh: int, mm: int) -> int:
