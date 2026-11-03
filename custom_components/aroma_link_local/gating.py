@@ -68,6 +68,22 @@ def gating_plan(mode: str, desired: bool | None, decision: str | None):
     return True, not desired
 
 
+SLOTS_FALLBACK_AFTER = timedelta(seconds=90)
+
+
+def slots_fallback(mode: str, desired: bool | None, work_status: str | None,
+                   off_since: datetime | None, now: datetime) -> bool:
+    """True when slot gating failed to stop the device and power must cut it.
+
+    Some units (Pro300_2, firmware V1.0.20250114) keep their default 10/120 cycle with every slot
+    disabled, so in ``slots`` mode a closed gate would go on diffusing. Once the device still
+    reports a work cycle ``SLOTS_FALLBACK_AFTER`` after the gate closed, switch it off.
+    """
+    if mode != GATING_SLOTS or desired is not False or off_since is None:
+        return False
+    return work_status in ("diffusing", "paused") and now - off_since >= SLOTS_FALLBACK_AFTER
+
+
 class GateLogic:
     """Stateful part: HVAC on-delay and the per-gate off-delay hold timestamps."""
 

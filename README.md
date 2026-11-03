@@ -52,7 +52,7 @@ day's slots at midnight).
 | **Weekly schedule** | Up to 4 windows per weekday, level 1-3, work/pause seconds; written to the device and verified, drift repaired. Switch `Automatic power`, services `set_schedule`, `import_schedule`, `sync_schedules`. |
 | **Night Owl** | Low-intensity run outside the windows (slot 5), per-day permission, fixed or outside-windows mode, motion-gated. Switch `Night spraying after motion`, service `set_night_owl`. |
 | **Timed run** | `start_timed_run` / `cancel_timed_run`, survives restarts, overlay in slot 5, hands power back at the end. |
-| **Gating** | Optional HVAC, occupancy and motion gates with delays, per device, in the integration options. Two modes: schedule flip (default, no power beeps) and power switching. |
+| **Gating** | Optional HVAC, occupancy and motion gates with delays, per device, in the integration options. Two modes: schedule flip (default, no power beeps) and power switching. Some units (Pro300_2, firmware V1.0.20250114) keep diffusing with every slot disabled; schedule flip then falls back to power after 90 s and logs a warning once. |
 | **Usage and oil** | `Total pump time`, `Power-on count`, `Pump cycle count` (estimated from power and work phase), `Oil level`, `Oil remaining`, `Refilled to full` button, services `oil_refill`, `oil_calibrate`. |
 | **Diagnostics** | `Spraying allowed`, service `send_frame`, `aroma_link_local_frame` events. |
 | **Schedule card** | The cjam28 schedule card ships with the integration and loads by itself: `type: custom:aroma-link-schedule-card`. |

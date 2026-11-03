@@ -19,7 +19,7 @@ from homeassistant.util import dt as dt_util
 
 from . import aroma_codec as codec
 from .const import signal_uplink
-from .gating import GateConfig, GateLogic, gating_plan
+from .gating import GateConfig, GateLogic, gating_plan, slots_fallback
 
 _LOGGER = logging.getLogger(__name__)
 EVALUATE_INTERVAL = timedelta(seconds=60)
@@ -34,6 +34,9 @@ class GatingEngine:
         self._last_cmd: tuple[bool, object] | None = None
         self._last_fan_at = None
         self._last_snapshot: dict | None = None
+        self._off_since = None                      # when the gate last turned the device off
+        self._fallback_warned = False
+        self._fallback_active = False               # power holds the device off until the gate opens
 
     async def async_start(self) -> None:
         cfg = self.logic.config
@@ -104,6 +107,22 @@ class GatingEngine:
             self._last_snapshot = dict(self.logic.snapshot)
             async_dispatcher_send(self._hass, signal_uplink(self._dev.topic_id), ("gate", self.logic.snapshot))
             self._hub.fire_update(self._dev.topic_id, "gating")
+        now = dt_util.utcnow()
+        if desired is False:
+            self._off_since = self._off_since or now
+        else:
+            self._off_since = None
+            self._fallback_active = False           # the gate opened: slots own the device again
+        if self._fallback_active or slots_fallback(self.logic.config.gating_mode, desired,
+                                                   (self._dev.status or {}).get("work_status"),
+                                                   self._off_since, now):
+            if not self._fallback_warned:
+                _LOGGER.warning("%s: still diffusing with every slot disabled; slot gating cannot stop "
+                                "this unit, switching it off by power (set gating mode to power to "
+                                "make this the rule)", self._dev.topic_id)
+            self._fallback_warned = True             # once per engine: the unit will not change
+            self._fallback_active = True
+            power = False
         if power is None:
             return
         await self._apply_power(power, reason)
