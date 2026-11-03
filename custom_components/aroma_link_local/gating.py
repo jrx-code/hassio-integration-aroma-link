@@ -92,6 +92,7 @@ class GateLogic:
         self._hvac_active_since: datetime | None = None
         self._hvac_false_since: datetime | None = None
         self._occ_false_since: datetime | None = None
+        self._occ_seen = False      # the off-delay only holds a gate that was actually open
         self.snapshot: dict = {}
 
     def update_hvac(self, action: str | None, now: datetime) -> None:
@@ -148,7 +149,9 @@ class GateLogic:
             hvac_ok = self._hvac_gate(now)
             occ_ok = self._occupancy_gate(occupancy_on)
             hvac = self._off_delay(hvac_ok, "_hvac_false_since", self.config.hvac_off_delay_minutes, now)
-            occ = self._off_delay(occ_ok, "_occ_false_since", self.config.occupancy_off_delay_minutes, now)
+            self._occ_seen = self._occ_seen or occ_ok
+            occ = (self._off_delay(occ_ok, "_occ_false_since", self.config.occupancy_off_delay_minutes, now)
+                   if self._occ_seen else False)    # nobody yet (start, reload, new window): no hold
             desired = hvac and occ
             self.snapshot = {
                 "decision": "window", "window": f"{hit[2].start}-{hit[2].end}",
@@ -158,6 +161,7 @@ class GateLogic:
             }
             return desired
         self._hvac_false_since = self._occ_false_since = None   # stale holds must not cut the next window
+        self._occ_seen = False
         if night_owl_period(model, now_local):
             ok = self._motion_gate(motion, model.night_owl.linger_minutes, now)
             self.snapshot = {"decision": "night_owl", "motion": ok}
