@@ -33,6 +33,7 @@ class Reconciler:
         self._writes: list[float] = []
         self.error: str | None = None
         self._offset: int | None = None             # minutes the device clock is ahead, None = not measured yet
+        self._gave_up = False                       # the give-up error was logged for the current episode
 
     @property
     def offset_min(self) -> int | None:
@@ -76,12 +77,16 @@ class Reconciler:
             return False                                # wait for the first status report: the offset shifts every slot
         desired = self.desired()
         if self._dev.slots == desired:
+            self._gave_up = False
             return False
         now = _time.monotonic()
         self._writes = [t for t in self._writes if now - t < WINDOW_SEC]
         if len(self._writes) >= MAX_WRITES and not force:
-            _LOGGER.error("%s: slots keep differing after %d writes, giving up until the next change",
-                          self._dev.topic_id, MAX_WRITES)
+            if not self._gave_up:       # once per episode: every later dump would repeat it
+                _LOGGER.error("%s: slots keep differing after %d writes, giving up until the next change; "
+                              "is another controller (a second Home Assistant) writing this device?",
+                              self._dev.topic_id, MAX_WRITES)
+                self._gave_up = True
             self.error = "device keeps rejecting the schedule"
             self._hub.fire_update(self._dev.topic_id, "sync")
             return False
@@ -96,3 +101,4 @@ class Reconciler:
     def reset_budget(self) -> None:
         self._writes.clear()
         self.error = None
+        self._gave_up = False

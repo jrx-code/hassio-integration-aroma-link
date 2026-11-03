@@ -338,6 +338,8 @@ minute (`17 3B` = 23:59); work and pause are big-endian seconds.
 
 - **No signal strength** and no firmware update path; both would need more protocol work.
 - **Counters and oil are estimates** (see above); the error is bounded by the poll interval (default 60 s).
+- **One Home Assistant per diffuser.** Two instances on the same broker (a test copy next to production) both write the schedule slots and overwrite each other; the log then says `slots keep differing ... another controller`. Disable the entry on the second instance.
+- **The device clock cannot be set** (no known command; `57/25` in the `52/25` layout is ignored). The integration measures the offset (`Clock offset` sensor) and shifts the written windows by it.
 - **State after changes on the device** shows with the next status report (poll interval); the fan state is pushed immediately.
 - **`/sys` telemetry** is shown as attributes of the firmware sensor, not as separate sensors.
 - The card was ported from the cloud integration; layouts are unchanged.
