@@ -33,6 +33,11 @@ class ModelStore:
         if self.on_change is not None:
             self.on_change(topic_id, change)
 
+    def remove(self, topic_id: str) -> None:
+        """Forget a removed device's model and write the store at once."""
+        if self._models.pop(topic_id, None) is not None:
+            self._store.async_delay_save(self._snapshot, 0)
+
     def _snapshot(self) -> dict:
         return {t: m.to_dict() for t, m in self._models.items()}
 

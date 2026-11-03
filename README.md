@@ -134,6 +134,11 @@ device in Home Assistant to fit your own scheme; entity ids follow Home Assistan
 Nothing goes into `configuration.yaml`. Discovered devices are kept in
 `.storage/aroma_link_local.devices`.
 
+Removing a diffuser (given away, replaced): device page, three-dot menu, **Delete**. The integration
+stops polling it, drops its schedule, gating and counters, and sends it nothing, so it keeps running
+as it was. If it publishes on the broker again (for example after a power cycle), it is discovered as
+a new device with default settings; redirect it back to the vendor cloud first to keep it away.
+
 ## Redirecting the diffuser to your broker
 
 This is the only non-trivial step. It happens entirely on your network: the device firmware is

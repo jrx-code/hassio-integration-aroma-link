@@ -49,6 +49,10 @@ class TimedRunManager:
             cancel()
         self._timers.clear()
 
+    def forget(self, dev) -> None:
+        """Drop a removed device's expiry timer without commanding the device."""
+        self._disarm(dev)
+
     # ---------------------------------------------------------------- public API
 
     async def async_start(self, dev, minutes: int, work_sec: int | None = None,

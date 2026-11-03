@@ -38,6 +38,7 @@ from .const import (
 )
 from .engine import GatingEngine
 from .gating import GateConfig
+from .model import topic_ids_for
 from .models_store import ModelStore
 from .reconciler import Reconciler
 from .services import async_register_services
@@ -182,6 +183,24 @@ class AromaHub:
             rec = self.reconciler(dev)
             rec.reset_budget()
             self.hass.async_create_task(rec.async_check())
+
+    @callback
+    def remove_device(self, topic_id: str) -> None:
+        """Forget a device removed from Home Assistant. Nothing is sent: it keeps running as it was.
+
+        It is no longer polled; if it publishes again (e.g. after a power cycle) it is discovered
+        as a new device with default settings.
+        """
+        dev = self.devices.pop(topic_id, None)
+        engine = self.engines.pop(topic_id, None)
+        if engine is not None:
+            engine.stop()
+        if dev is not None:
+            self.timed.forget(dev)
+        self.reconcilers.pop(topic_id, None)
+        self.models.remove(topic_id)
+        self._flush()
+        _LOGGER.info("removed Aroma-Link device %s", topic_id)
 
     # ------------------------------------------------------------------ io
 
@@ -332,6 +351,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def _reload(hass: HomeAssistant, entry: ConfigEntry) -> None:
     await hass.config_entries.async_reload(entry.entry_id)
+
+
+async def async_remove_config_entry_device(hass: HomeAssistant, entry: ConfigEntry,
+                                           device_entry: dr.DeviceEntry) -> bool:
+    """Allow Delete on the device page; the hub forgets the device."""
+    hub = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+    if hub is not None:
+        macs = {topic_id: dev.mac for topic_id, dev in hub.devices.items()}
+        for topic_id in topic_ids_for(macs, device_entry.identifiers, DOMAIN):
+            hub.remove_device(topic_id)
+    return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

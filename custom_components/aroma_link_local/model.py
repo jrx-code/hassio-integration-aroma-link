@@ -205,3 +205,14 @@ class DeviceModel:
             timed_run=TimedRun.from_dict(data["timed_run"]) if data.get("timed_run") else None,
             usage=dict(data.get("usage") or {}), oil=dict(data.get("oil") or {}),
         )
+
+
+def device_id_from_mac(mac: str) -> str:
+    """The registry identifier of a diffuser: its MAC, lower case, without colons."""
+    return mac.replace(":", "").lower()
+
+
+def topic_ids_for(macs: dict[str, str], identifiers, domain: str) -> list[str]:
+    """Topic ids (from ``{topic_id: mac}``) whose device carries one of the registry ``identifiers``."""
+    wanted = {value for dom, value in identifiers if dom == domain}
+    return [topic_id for topic_id, mac in macs.items() if device_id_from_mac(mac) in wanted]
