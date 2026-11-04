@@ -1,6 +1,5 @@
 # Aroma-Link Local
 
-[![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
 [![Release](https://img.shields.io/github/v/release/jrx-code/hassio-integration-aroma-link-local)](https://github.com/jrx-code/hassio-integration-aroma-link-local/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![Home Assistant 2024.1+](https://img.shields.io/badge/Home%20Assistant-2024.1%2B-blue)
@@ -104,11 +103,16 @@ full wire format is in [`docs/protocol.md`](docs/protocol.md) and summarised
 
 ### HACS (recommended)
 
-1. HACS, Integrations, three-dot menu, **Custom repositories**. Add
-   `https://github.com/jrx-code/hassio-integration-aroma-link-local`, category *Integration*.
-2. Download **Aroma-Link Local** and restart Home Assistant.
-3. Settings, Devices & services, **Add integration**, search *Aroma-Link Local*, confirm. There are
+1. HACS (or the Marketplace on Home Assistant 2026.11+), search for **Aroma-Link Local**,
+   download it, restart Home Assistant.
+2. Settings, Devices & services, **Add integration**, search *Aroma-Link Local*, confirm. There are
    no fields: devices appear as soon as they publish on the broker.
+
+[![Open your Home Assistant instance and open this repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=jrx-code&repository=hassio-integration-aroma-link-local&category=integration)
+
+If the search finds nothing (the default-store submission is still pending), add it by hand:
+HACS, three-dot menu, **Custom repositories**, URL
+`https://github.com/jrx-code/hassio-integration-aroma-link-local`, type **Integration**.
 
 ### Manual
 
