@@ -11,10 +11,10 @@
     "frontend",
     "websocket_api"
   ],
-  "documentation": "https://github.com/jrx-code/hassio-integration-aroma-link",
+  "documentation": "https://github.com/jrx-code/hassio-integration-aroma-link-local",
   "integration_type": "device",
   "iot_class": "local_push",
-  "issue_tracker": "https://github.com/jrx-code/hassio-integration-aroma-link/issues",
+  "issue_tracker": "https://github.com/jrx-code/hassio-integration-aroma-link-local/issues",
   "requirements": [],
-  "version": "0.4.9"
+  "version": "0.4.10"
 }
