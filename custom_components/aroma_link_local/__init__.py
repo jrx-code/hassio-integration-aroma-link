@@ -41,6 +41,7 @@ from .gating import GateConfig
 from .model import topic_ids_for
 from .models_store import ModelStore
 from .reconciler import Reconciler
+from .schedule import wall_clock_drift
 from .services import async_register_services
 from .timed_run import TimedRunManager
 from .usage import Oil, Usage, capacity_from_model, sample
@@ -71,8 +72,7 @@ class AromaDevice:
         """Seconds the device clock is ahead of HA at its last report (it reports local time)."""
         if not self.status or self.status_at is None:
             return None
-        clock = self.status["clock"].replace(tzinfo=dt_util.get_default_time_zone())
-        return (clock - self.status_at).total_seconds()
+        return wall_clock_drift(self.status["clock"], dt_util.as_local(self.status_at))
 
     @property
     def t_down(self) -> str:

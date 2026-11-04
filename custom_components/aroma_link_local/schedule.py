@@ -166,6 +166,16 @@ def day_drift(drift_sec: float) -> float:
     return (drift_sec + _DAY_SEC / 2) % _DAY_SEC - _DAY_SEC / 2
 
 
+def wall_clock_drift(device_clock: datetime, now_local: datetime) -> float:
+    """Seconds the device wall clock is ahead of the local wall clock.
+
+    Both are compared as naive wall times. Attaching the local zone to the device clock would use
+    the DST offset of the device's DATE (e.g. CEST for a 2021-05 clock) instead of today's, and
+    shift every slot by an hour in winter.
+    """
+    return (device_clock.replace(tzinfo=None) - now_local.replace(tzinfo=None)).total_seconds()
+
+
 def offset_minutes(drift_sec: float | None) -> int:
     """Whole minutes the device clock is ahead of real time in the day (negative = behind)."""
     if drift_sec is None:
