@@ -635,6 +635,6 @@ if (!window.customCards.some((c) => c.type === "aroma-link-schedule-card")) {
     description:
       "Weekly schedule, Night Owl, timed runs, and oil tracking for Aroma-Link diffusers.",
     preview: true,
-    documentationURL: "https://github.com/cjam28/homeassistant_aroma-link#readme",
+    documentationURL: "https://github.com/jrx-code/hassio-integration-aroma-link-local#features",
   });
 }
