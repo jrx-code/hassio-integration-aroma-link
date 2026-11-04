@@ -2,6 +2,7 @@
 
 Decision per evaluation, adapted from cjam28/homeassistant_aroma-link v3.1.2 (MIT):
 
+    a block entity is on       -> OFF at once (no hold, outranks a timed run)
     timed run active           -> ON
     schedule_enabled == False  -> hands off (user owns power)
     inside a normal window     -> HVAC gate AND occupancy gate (each with an off-delay)
@@ -11,6 +12,11 @@ Decision per evaluation, adapted from cjam28/homeassistant_aroma-link v3.1.2 (MI
 Gating modes: ``power`` (the decision drives the power switch) and ``slots`` (default; power
 is held ON while the engine owns the device and the decision disarms/re-arms the slots, so the
 device never beeps for a gate change).
+
+The HVAC gate reads either a ``climate`` entity (``hvac_action``) or a numeric sensor such as a
+supply airflow, with a start and a stop threshold (hysteresis); an unreadable sensor is inactive.
+``cycle_guard`` limits power switching in ``power`` mode: a minimum off time before the gate may
+switch the device on again, and a cap on continuous on time followed by a rest.
 """
 from __future__ import annotations
 
@@ -36,6 +42,12 @@ class GateConfig:
     occupancy_off_delay_minutes: int = 2
     gating_mode: str = GATING_SLOTS
     keep_fan_on: bool = True
+    hvac_start_threshold: float | None = None   # sensor HVAC entity: active from this value up
+    hvac_stop_threshold: float | None = None    # ... and stays active down to this value
+    block_entities: list[str] = field(default_factory=list)
+    min_off_minutes: int = 0
+    max_on_minutes: int = 0
+    rest_minutes: int = 0
 
     @classmethod
     def from_options(cls, options: dict, topic_id: str) -> GateConfig:
@@ -49,12 +61,29 @@ class GateConfig:
             occupancy_off_delay_minutes=int(g.get("occupancy_off_delay_minutes", 2)),
             gating_mode=g.get("gating_mode") if g.get("gating_mode") in GATING_MODES else GATING_SLOTS,
             keep_fan_on=bool(g.get("keep_fan_on", True)),
+            hvac_start_threshold=_float(g.get("hvac_start_threshold")),
+            hvac_stop_threshold=_float(g.get("hvac_stop_threshold")),
+            block_entities=list(g.get("block_entities") or []),
+            min_off_minutes=int(g.get("min_off_minutes", 0)),
+            max_on_minutes=int(g.get("max_on_minutes", 0)),
+            rest_minutes=int(g.get("rest_minutes", 0)),
         )
+
+    @property
+    def hvac_is_sensor(self) -> bool:
+        return bool(self.climate_entity) and self.climate_entity.split(".")[0] != "climate"
 
     @property
     def watched_entities(self) -> list[str]:
         out = [e for e in (self.climate_entity, self.occupancy_entity) if e]
-        return out + list(self.motion_entities)
+        return out + list(self.motion_entities) + list(self.block_entities)
+
+
+def _float(value) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def gating_plan(mode: str, desired: bool | None, decision: str | None):
@@ -93,6 +122,10 @@ class GateLogic:
         self._hvac_false_since: datetime | None = None
         self._occ_false_since: datetime | None = None
         self._occ_seen = False      # the off-delay only holds a gate that was actually open
+        self._hvac_value: float | None = None
+        self._power: bool | None = None             # last device power seen by cycle_guard
+        self._power_since: datetime | None = None   # None after start: no wait carried over
+        self._rest_until: datetime | None = None
         self.snapshot: dict = {}
 
     def update_hvac(self, action: str | None, now: datetime) -> None:
@@ -101,6 +134,22 @@ class GateLogic:
                 self._hvac_active_since = now
         else:
             self._hvac_active_since = None
+
+    def update_hvac_value(self, raw, now: datetime) -> None:
+        """Sensor HVAC entity: active from the start threshold, inactive below the stop one."""
+        value = _float(raw)
+        self._hvac_value = value
+        start = self.config.hvac_start_threshold
+        start = 0.0 if start is None else start
+        stop = self.config.hvac_stop_threshold
+        stop = start if stop is None else min(stop, start)
+        if value is None:
+            active = False                          # unavailable or unknown: never diffuse blind
+        elif self._hvac_active_since is not None:
+            active = value >= stop
+        else:
+            active = value >= start
+        self.update_hvac("active" if active else "idle", now)
 
     def _hvac_gate(self, now: datetime) -> bool:
         if not self.config.climate_entity:
@@ -136,8 +185,11 @@ class GateLogic:
 
     def desired_power(self, model: DeviceModel, now_local: datetime, now: datetime, *,
                       timed_run_active: bool, occupancy_on: bool | None,
-                      motion: list[tuple[str, datetime]]) -> bool | None:
+                      motion: list[tuple[str, datetime]], blocked: list[str] = ()) -> bool | None:
         """True/False, or None when the engine hands off."""
+        if blocked:
+            self.snapshot = {"decision": "blocked", "blocked_by": list(blocked)}
+            return False
         if timed_run_active:
             self.snapshot = {"decision": "timed_run"}
             return True
@@ -156,6 +208,7 @@ class GateLogic:
             self.snapshot = {
                 "decision": "window", "window": f"{hit[2].start}-{hit[2].end}",
                 "hvac": hvac_ok, "hvac_configured": bool(self.config.climate_entity),
+                **({"hvac_value": self._hvac_value} if self.config.hvac_is_sensor else {}),
                 "occupancy": occ_ok, "occupancy_configured": bool(self.config.occupancy_entity),
                 "holding": desired and not (hvac_ok and occ_ok),
             }
@@ -168,3 +221,37 @@ class GateLogic:
             return ok
         self.snapshot = {"decision": "outside"}
         return False
+
+    def cycle_guard(self, want: bool | None, power: bool | None, now: datetime) -> bool | None:
+        """Limit gate-driven switching in ``power`` mode; returns the power to command.
+
+        Tracks the device power it is shown. Only a ``window`` decision is held back: a block,
+        a timed run, the end of the window and hands-off pass through unchanged.
+        """
+        if power is not None and power != self._power:
+            if self._power is not None:
+                self._power_since = now             # a seen transition starts the clock
+            elif power:
+                self._power_since = now             # on at start: count the watchdog from here
+            self._power = power
+        cfg = self.config
+        if self.snapshot.get("decision") != "window" or want is None:
+            if self.snapshot.get("decision") == "outside":
+                self._rest_until = None             # a new window starts rested
+            return want
+        if self._rest_until is not None:
+            if now < self._rest_until:
+                self.snapshot["resting_until"] = self._rest_until.isoformat()
+                return False
+            self._rest_until = None
+        since = self._power_since
+        if want and power and cfg.max_on_minutes > 0 and since is not None \
+                and now - since >= timedelta(minutes=cfg.max_on_minutes):
+            self._rest_until = now + timedelta(minutes=cfg.rest_minutes)
+            self.snapshot["resting_until"] = self._rest_until.isoformat()
+            return False
+        if want and power is False and cfg.min_off_minutes > 0 and since is not None \
+                and now - since < timedelta(minutes=cfg.min_off_minutes):
+            self.snapshot["min_off_until"] = (since + timedelta(minutes=cfg.min_off_minutes)).isoformat()
+            return False
+        return want

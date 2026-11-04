@@ -42,24 +42,36 @@
         "title": "Bramkowanie",
         "description": "Opcjonalne bramki dla okien harmonogramu. Bez bramek harmonogram działa tak, jak zapisany. Bramkowanie działa dopiero po zapisaniu harmonogramu z Home Assistanta i przy włączonym 'Harmonogram włączony'.",
         "data": {
-          "climate_entity": "HVAC (encja climate)",
+          "climate_entity": "HVAC (encja climate lub czujnik przepływu)",
           "occupancy_entity": "Obecność (on = ktoś jest w domu)",
           "motion_entities": "Czujniki ruchu (Night Owl)",
           "hvac_on_delay_minutes": "Opóźnienie włączenia HVAC (min)",
           "hvac_off_delay_minutes": "Opóźnienie wyłączenia HVAC (min)",
           "occupancy_off_delay_minutes": "Opóźnienie wyłączenia obecności (min)",
           "gating_mode": "Tryb bramkowania",
-          "keep_fan_on": "Wentylator włączony podczas rozpylania"
+          "keep_fan_on": "Wentylator włączony podczas rozpylania",
+          "hvac_start_threshold": "Czujnik HVAC: próg startu",
+          "hvac_stop_threshold": "Czujnik HVAC: próg zatrzymania",
+          "block_entities": "Blokada (dowolna włączona = natychmiast wyłącz)",
+          "min_off_minutes": "Minimalny czas wyłączenia (min, tryb power)",
+          "max_on_minutes": "Maksymalny ciągły czas pracy (min, tryb power)",
+          "rest_minutes": "Przerwa po maksymalnym czasie pracy (min)"
         },
         "data_description": {
-          "climate_entity": "Rozpylaj tylko, gdy encja climate zgłasza aktywne hvac_action.",
+          "climate_entity": "Rozpylaj tylko, gdy encja climate zgłasza aktywne hvac_action albo czujnik pokazuje co najmniej próg startu.",
           "occupancy_entity": "Rozpylaj w oknach tylko, gdy encja jest włączona.",
           "motion_entities": "Night Owl działa tylko po ruchu w czasie podtrzymania.",
           "hvac_on_delay_minutes": "HVAC musi być aktywne tak długo, zanim bramka się otworzy.",
           "hvac_off_delay_minutes": "Zamknięta bramka HVAC musi trwać tyle, zanim rozpylanie ustanie.",
           "occupancy_off_delay_minutes": "Obecność musi być wyłączona tak długo, zanim rozpylanie ustanie.",
           "gating_mode": "slots: przełączanie harmonogramu, bez pisków. power: decyzja przełącza zasilanie.",
-          "keep_fan_on": "Włącz wentylator urządzenia, gdy bramkowanie chce rozpylania."
+          "keep_fan_on": "Włącz wentylator urządzenia, gdy bramkowanie chce rozpylania.",
+          "hvac_start_threshold": "Czujnik HVAC otwiera bramkę od tej wartości (np. 150 m³/h).",
+          "hvac_stop_threshold": "... i zamyka poniżej tej wartości (np. 100 m³/h). Brak odczytu zamyka bramkę.",
+          "block_entities": "Dym, ręczna pauza, bieg wymuszony: dowolna włączona zatrzymuje rozpylanie bez opóźnień.",
+          "min_off_minutes": "Po wyłączeniu bramka czeka tyle, zanim znów włączy urządzenie (mniej pisków). 0 = wyłączone.",
+          "max_on_minutes": "Watchdog: po tylu minutach pracy urządzenie odpoczywa. 0 = wyłączone.",
+          "rest_minutes": "Długość przerwy watchdoga."
         }
       }
     },
