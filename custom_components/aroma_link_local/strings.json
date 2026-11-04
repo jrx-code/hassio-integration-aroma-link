@@ -42,24 +42,36 @@
         "title": "Gating",
         "description": "Optional gates for scheduled windows. Without any gate the schedule runs as written. Gating is active only after a schedule was saved from Home Assistant and 'Schedule enabled' is on.",
         "data": {
-          "climate_entity": "HVAC (climate entity)",
+          "climate_entity": "HVAC (climate entity or airflow sensor)",
           "occupancy_entity": "Occupancy (on = someone home)",
           "motion_entities": "Motion sensors (Night Owl)",
           "hvac_on_delay_minutes": "HVAC on-delay (min)",
           "hvac_off_delay_minutes": "HVAC off-delay (min)",
           "occupancy_off_delay_minutes": "Occupancy off-delay (min)",
           "gating_mode": "Gating mode",
-          "keep_fan_on": "Keep the fan on while diffusing"
+          "keep_fan_on": "Keep the fan on while diffusing",
+          "hvac_start_threshold": "HVAC sensor: start threshold",
+          "hvac_stop_threshold": "HVAC sensor: stop threshold",
+          "block_entities": "Block (any on = off at once)",
+          "min_off_minutes": "Minimum off time (min, power mode)",
+          "max_on_minutes": "Maximum continuous on time (min, power mode)",
+          "rest_minutes": "Rest after the maximum on time (min)"
         },
         "data_description": {
-          "climate_entity": "Diffuse only while the climate entity reports an active hvac_action.",
+          "climate_entity": "Diffuse only while the climate entity reports an active hvac_action, or while the sensor reads at least the start threshold.",
           "occupancy_entity": "Diffuse inside windows only while this entity is on.",
           "motion_entities": "Night Owl runs only after motion within the linger time.",
           "hvac_on_delay_minutes": "HVAC must be active this long before the gate opens.",
           "hvac_off_delay_minutes": "A closed HVAC gate must last this long before diffusing stops.",
           "occupancy_off_delay_minutes": "Occupancy must stay off this long before diffusing stops.",
           "gating_mode": "slots: schedule flip, no power beeps. power: the decision switches power.",
-          "keep_fan_on": "Turn the device fan on whenever the gating wants it diffusing."
+          "keep_fan_on": "Turn the device fan on whenever the gating wants it diffusing.",
+          "hvac_start_threshold": "A sensor HVAC entity opens the gate from this value up (e.g. 150 m³/h).",
+          "hvac_stop_threshold": "... and closes it below this value (e.g. 100 m³/h). An unreadable sensor closes the gate.",
+          "block_entities": "Smoke, a manual pause, a ventilation boost: any of these on stops diffusing without the off-delays.",
+          "min_off_minutes": "After the device was switched off, the gate waits this long before switching it on again (fewer beeps). 0 = off.",
+          "max_on_minutes": "Watchdog: after this long on, the device rests. 0 = off.",
+          "rest_minutes": "How long the watchdog rest lasts."
         }
       }
     },

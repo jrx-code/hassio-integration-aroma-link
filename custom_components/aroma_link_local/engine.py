@@ -19,7 +19,7 @@ from homeassistant.util import dt as dt_util
 
 from . import aroma_codec as codec
 from .const import signal_uplink
-from .gating import GateConfig, GateLogic, gating_plan, slots_fallback
+from .gating import GATING_POWER, GateConfig, GateLogic, gating_plan, slots_fallback
 
 _LOGGER = logging.getLogger(__name__)
 EVALUATE_INTERVAL = timedelta(seconds=60)
@@ -37,6 +37,7 @@ class GatingEngine:
         self._off_since = None                      # when the gate last turned the device off
         self._fallback_warned = False
         self._fallback_active = False               # power holds the device off until the gate opens
+        self._last_decision: str | None = None
 
     async def async_start(self) -> None:
         cfg = self.logic.config
@@ -65,7 +66,10 @@ class GatingEngine:
         self._hass.async_create_task(self.async_evaluate("tick"))
 
     def _prime_hvac(self, state) -> None:
-        self.logic.update_hvac(state.attributes.get("hvac_action") if state else None, dt_util.utcnow())
+        if self.logic.config.hvac_is_sensor:
+            self.logic.update_hvac_value(state.state if state else None, dt_util.utcnow())
+        else:
+            self.logic.update_hvac(state.attributes.get("hvac_action") if state else None, dt_util.utcnow())
 
     # ---------------------------------------------------------------- inputs
 
@@ -73,6 +77,14 @@ class GatingEngine:
         eid = self.logic.config.occupancy_entity
         state = self._hass.states.get(eid) if eid else None
         return None if state is None else state.state == "on"
+
+    def _blocked(self) -> list[str]:
+        out = []
+        for eid in self.logic.config.block_entities:
+            state = self._hass.states.get(eid)
+            if state is not None and state.state == "on":
+                out.append(eid)
+        return out
 
     def _motion(self) -> list[tuple[str, object]]:
         out = []
@@ -95,9 +107,15 @@ class GatingEngine:
             return
         desired = self.logic.desired_power(
             model, dt_util.now(), dt_util.utcnow(), timed_run_active=timed,
-            occupancy_on=self._occupancy(), motion=self._motion())
+            occupancy_on=self._occupancy(), motion=self._motion(), blocked=self._blocked())
         decision = self.logic.snapshot.get("decision")
+        if decision != self._last_decision:
+            if self._last_decision == "hands_off":
+                self._last_cmd = None               # taking power back: apply now, no settle (#30)
+            self._last_decision = decision
         power, slots_gated = gating_plan(self.logic.config.gating_mode, desired, decision)
+        if self.logic.config.gating_mode == GATING_POWER:
+            power = self.logic.cycle_guard(power, self._dev.power, dt_util.utcnow())
         self.logic.snapshot.update(mode=self.logic.config.gating_mode, desired=desired)
         if slots_gated is not None and rec.gated_off != slots_gated:
             rec.gated_off = slots_gated

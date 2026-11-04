@@ -139,7 +139,11 @@ export function gateReason(status) {
       return "Timed run active";
     case "hands_off":
       return "Automation off — manual control";
+    case "blocked":
+      return "Blocked · " + (g.blocked_by || []).join(", ");
     case "window": {
+      if (g.resting_until) return "In window · watchdog rest";
+      if (g.min_off_until) return "In window · minimum off time";
       if (g.hvac === false) return "In window · waiting for HVAC";
       if (g.occupancy === false) return "In window · nobody home";
       return status.power ? "Diffusing · scheduled window" : "Scheduled window";

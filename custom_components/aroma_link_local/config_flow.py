@@ -19,6 +19,8 @@ from .gating import GATING_MODES, GateConfig
 
 NUMBER_MIN = selector.NumberSelector(selector.NumberSelectorConfig(
     min=0, max=240, step=1, mode=selector.NumberSelectorMode.BOX, unit_of_measurement="min"))
+THRESHOLD = selector.NumberSelector(selector.NumberSelectorConfig(
+    min=0, max=100000, step="any", mode=selector.NumberSelectorMode.BOX))
 
 
 class AromaLinkLocalConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -86,7 +88,9 @@ class AromaLinkOptionsFlow(config_entries.OptionsFlow):
 
         schema = vol.Schema({
             opt("climate_entity", cur.climate_entity): selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="climate")),
+                selector.EntitySelectorConfig(domain=["climate", "sensor"])),
+            opt("hvac_start_threshold", cur.hvac_start_threshold): THRESHOLD,
+            opt("hvac_stop_threshold", cur.hvac_stop_threshold): THRESHOLD,
             opt("occupancy_entity", cur.occupancy_entity): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain=["binary_sensor", "input_boolean", "group"])),
             opt("motion_entities", cur.motion_entities): selector.EntitySelector(
@@ -97,5 +101,10 @@ class AromaLinkOptionsFlow(config_entries.OptionsFlow):
             vol.Optional("gating_mode", default=cur.gating_mode): selector.SelectSelector(
                 selector.SelectSelectorConfig(options=list(GATING_MODES), translation_key="gating_mode")),
             vol.Optional("keep_fan_on", default=cur.keep_fan_on): bool,
+            opt("block_entities", cur.block_entities): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain=["binary_sensor", "input_boolean"], multiple=True)),
+            vol.Optional("min_off_minutes", default=cur.min_off_minutes): NUMBER_MIN,
+            vol.Optional("max_on_minutes", default=cur.max_on_minutes): NUMBER_MIN,
+            vol.Optional("rest_minutes", default=cur.rest_minutes): NUMBER_MIN,
         })
         return self.async_show_form(step_id="gate_config", data_schema=schema)

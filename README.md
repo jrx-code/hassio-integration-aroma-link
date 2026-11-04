@@ -132,6 +132,15 @@ Options (Settings, the integration, **Configure**):
 
 Gating (HVAC, occupancy, motion) is configured per device under *Configure, Gating*.
 
+- **HVAC** takes a `climate` entity (active `hvac_action`) or a numeric sensor, for example the
+  supply airflow of a heat recovery unit when the diffuser sits on its duct. A sensor opens the gate
+  at the start threshold and closes it below the stop threshold; an unreadable sensor closes it.
+- **Block** entities (smoke, a manual pause, a ventilation boost) stop diffusing at once, without the
+  off-delays and ahead of a timed run.
+- **Minimum off time** and **maximum on time with a rest** (power mode only) bound how often the
+  gate switches power, since every power change beeps. The end of a window and a block still cut
+  power at once.
+
 Naming: the device is created as `Aroma-Link <MAC>` with entities `Power` and `Fan`. Rename the
 device in Home Assistant to fit your own scheme; entity ids follow Home Assistant's normal rules.
 
