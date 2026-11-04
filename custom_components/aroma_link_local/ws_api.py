@@ -179,6 +179,11 @@ async def ws_list_devices(hass, connection, msg):
     connection.send_result(msg["id"], {"devices": devices})
 
 
+def _card_digest() -> str:
+    """Hash of every card module, so the static path changes with the code. Blocking: run in the executor."""
+    return hashlib.sha1(b"".join(p.read_bytes() for p in sorted(WWW.rglob("*.js")))).hexdigest()[:8]
+
+
 async def async_register(hass: HomeAssistant) -> None:
     """Websocket commands plus the card as an extra JS module (no Lovelace resource to manage)."""
     if hass.data.get(f"{DOMAIN}_ws_registered"):
@@ -187,7 +192,7 @@ async def async_register(hass: HomeAssistant) -> None:
     for fn in (ws_get_schedule, ws_save_schedule, ws_set_night_owl_days, ws_set_flags, ws_sync_now,
                ws_get_status, ws_timed_run_start, ws_timed_run_cancel, ws_list_devices):
         websocket_api.async_register_command(hass, fn)
-    digest = hashlib.sha1(b"".join(p.read_bytes() for p in sorted(WWW.rglob("*.js")))).hexdigest()[:8]
+    digest = await hass.async_add_executor_job(_card_digest)
     base = f"/aroma_link_local_card/{digest}"
     await hass.http.async_register_static_paths([StaticPathConfig(base, str(WWW), False)])
     add_extra_js_url(hass, f"{base}/{CARD_FILE}")
