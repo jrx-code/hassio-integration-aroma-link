@@ -103,6 +103,8 @@ full wire format is in [`docs/protocol.md`](docs/protocol.md) and summarised
 
 ### HACS (recommended)
 
+The integration is in the HACS default store.
+
 1. HACS (or the Marketplace on Home Assistant 2026.11+), search for **Aroma-Link Local**,
    download it, restart Home Assistant.
 2. Settings, Devices & services, **Add integration**, search *Aroma-Link Local*, confirm. There are
@@ -110,7 +112,7 @@ full wire format is in [`docs/protocol.md`](docs/protocol.md) and summarised
 
 [![Open your Home Assistant instance and open this repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=jrx-code&repository=hassio-integration-aroma-link-local&category=integration)
 
-If the search finds nothing (the default-store submission is still pending), add it by hand:
+If the search finds nothing, add it by hand:
 HACS, three-dot menu, **Custom repositories**, URL
 `https://github.com/jrx-code/hassio-integration-aroma-link-local`, type **Integration**.
 
