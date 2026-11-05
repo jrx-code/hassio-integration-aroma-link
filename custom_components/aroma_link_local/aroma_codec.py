@@ -100,15 +100,18 @@ class Slot:
 
 
 FILLER = Slot()  # 00:00-23:59, level 1, disabled, work 10, pause 120
+ALL_DAYS = 0x7F  # schedule day mask: every weekday table
 
 
 def schedule_frame(mac: str, slots: list[Slot]) -> bytes:
     """workSet command (cmd 0x57 sub 0x15). Pads/truncates to exactly 5 slots.
-    Header = <nslots*9+1> 00 01, then 5 x 9-byte slots.
+    Header = <nslots*9+1> 00 <day mask>, then 5 x 9-byte slots. The unit keeps one table per
+    weekday (mask bit = 1 << weekday, Sunday = 0x01) and runs the one of its own clock's day, so
+    the same slots go to every day (0x7F), as the vendor cloud does.
     """
     sl = (list(slots) + [FILLER] * 5)[:5]
     body = b"".join(s.to_wire() for s in sl)
-    header = bytes([len(body) + 1, 0x00, 0x01])
+    header = bytes([len(body) + 1, 0x00, ALL_DAYS])
     return build_inner(mac, CMD_CONTROL, SUB_SCHEDULE, header + body)
 
 
