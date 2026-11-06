@@ -15,6 +15,7 @@ from homeassistant.components import mqtt
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import (
     async_track_time_change,
@@ -40,6 +41,7 @@ from .engine import GatingEngine
 from .gating import GateConfig
 from .model import topic_ids_for
 from .models_store import ModelStore
+from .naming import is_generated, wanted_entity_id
 from .reconciler import Reconciler
 from .schedule import wall_clock_drift
 from .services import async_register_services
@@ -338,7 +340,27 @@ class AromaHub:
                 model=dev.identity.get("model") or entry.model)
 
 
+@callback
+def _migrate_entity_ids(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Rename generated entity ids to the English, cloud-compatible scheme (naming.py).
+
+    Before 0.5.0 the ids were slugs of the translated names (``..._pozostaly_czas_pauzy``) next to
+    English ones (``..._power``). Only ids that still carry the generated device prefix move; an id
+    the user renamed, or a target already taken, is left alone.
+    """
+    reg = er.async_get(hass)
+    for ent in er.async_entries_for_config_entry(reg, entry.entry_id):
+        want = wanted_entity_id(ent.domain, ent.unique_id)
+        if (want is None or ent.entity_id == want
+                or not is_generated(ent.entity_id, ent.domain, ent.unique_id)
+                or reg.async_get(want) is not None):
+            continue
+        _LOGGER.info("Renaming %s to %s", ent.entity_id, want)
+        reg.async_update_entity(ent.entity_id, new_entity_id=want)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    _migrate_entity_ids(hass, entry)
     hub = AromaHub(hass, entry)
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = hub
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

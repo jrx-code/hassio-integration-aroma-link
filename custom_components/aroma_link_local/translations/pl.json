@@ -136,6 +136,12 @@
       }
     },
     "switch": {
+      "power": {
+        "name": "Zasilanie"
+      },
+      "fan": {
+        "name": "Wentylator"
+      },
       "schedule_enabled": {
         "name": "Automatyczne zasilanie"
       },

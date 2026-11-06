@@ -136,6 +136,12 @@
       }
     },
     "switch": {
+      "power": {
+        "name": "Power"
+      },
+      "fan": {
+        "name": "Fan"
+      },
       "schedule_enabled": {
         "name": "Automatic power"
       },

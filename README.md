@@ -143,8 +143,19 @@ Gating (HVAC, occupancy, motion) is configured per device under *Configure, Gati
   gate switches power, since every power change beeps. The end of a window and a block still cut
   power at once.
 
-Naming: the device is created as `Aroma-Link <MAC>` with entities `Power` and `Fan`. Rename the
-device in Home Assistant to fit your own scheme; entity ids follow Home Assistant's normal rules.
+Naming: the device is created as `Aroma-Link <MAC>`. Entity names are translated (English,
+Polish); entity ids are English and do not depend on the UI language, with the same suffixes as the
+cloud integration: `switch.aroma_link_<mac>_power`, `_fan`, `_schedule_enabled`, `_night_owl`,
+`sensor..._work_status`, `_work_remain`, `_pause_remain`, `_on_count`, `_pump_count`,
+`_cumulative_runtime`, `_oil_level`, `_oil_remaining`, `_firmware_version`, `_last_update`,
+`number..._work_duration`, `_pause_duration`, `binary_sensor..._scheduled_on`, `button..._refill`
+(`<mac>` with underscores, e.g. `aa_bb_cc_dd_ee_ff`). Since 0.5.0 an id still carrying that generated
+prefix is renamed to this scheme once at startup (before, the ids were slugs of the translated
+names); an id you renamed yourself is left alone. Helpers that point at a renamed entity
+(utility meter, history stats) follow the rename by themselves.
+
+`Spray time left` and `Pause time left` count down only in their own phase and read 0 otherwise:
+with the power off the device keeps reporting the counters of its last run.
 
 Nothing goes into `configuration.yaml`. Discovered devices are kept in
 `.storage/aroma_link_local.devices`.
