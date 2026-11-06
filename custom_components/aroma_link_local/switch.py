@@ -25,8 +25,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
             return
         known.add(dev.topic_id)
         async_add_entities([
-            AromaSwitch(hass, hub, dev, "power", "Power", codec.SUB_POWER, "mdi:spray"),
-            AromaSwitch(hass, hub, dev, "fan", "Fan", codec.SUB_FAN, "mdi:fan"),
+            AromaSwitch(hass, hub, dev, "power", None, codec.SUB_POWER, "mdi:spray"),
+            AromaSwitch(hass, hub, dev, "fan", None, codec.SUB_FAN, "mdi:fan"),
             FlagSwitch(hass, hub, dev, "schedule_enabled", "schedule_enabled", "mdi:calendar-check"),
             FlagSwitch(hass, hub, dev, "night_owl", "night_owl_enabled", "mdi:owl"),
         ])

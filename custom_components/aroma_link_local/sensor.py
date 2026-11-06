@@ -16,6 +16,7 @@ from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.util import dt as dt_util
 
 from . import aroma_codec as codec
+from .naming import phase_remaining
 from .const import DOMAIN, SIGNAL_NEW_DEVICE
 from .entity import AromaEntity
 from .model import today
@@ -132,7 +133,7 @@ class WorkStatusSensor(AromaEntity, SensorEntity):
 
 
 class RemainSensor(AromaEntity, SensorEntity):
-    """Seconds left in the current work or pause phase, from the 52/25 report."""
+    """Seconds left in the work or pause phase, from the 52/25 report; 0 outside that phase."""
 
     _attr_device_class = SensorDeviceClass.DURATION
     _attr_native_unit_of_measurement = "s"
@@ -144,7 +145,7 @@ class RemainSensor(AromaEntity, SensorEntity):
 
     @property
     def native_value(self):
-        return self._dev.status.get(self._key) if self._dev.status else None
+        return phase_remaining(self._dev.status, self._key)
 
     @callback
     def _on_event(self, ev) -> bool:
